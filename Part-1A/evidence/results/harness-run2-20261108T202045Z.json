@@ -1,4 +1,74 @@
-{
+# Which runs failed and which gates
+Get-ChildItem evidence\results\harness-run*.json | Sort-Object Name | ForEach-Object {
+  $r = Get-Content $_ -Raw | ConvertFrom-Json
+  $failed = ($r.gates | Where-Object { -not $_.passed } | ForEach-Object { $_.gate }) -join ", "
+  "$($r.label): $($r.overall)  failed: $failed"
+}
+
+# What changed since before the fixes
+git diff part1a-before-fixes --stat
+
+# Proof you didn't weaken the lint config
+git diff part1a-before-fixes -- .harness/ruff.toml
+
+# Commit history as a timeline
+git log --oneline# Which runs failed and which gates
+Get-ChildItem evidence\results\harness-run*.json | Sort-Object Name | ForEach-Object {
+  $r = Get-Content $_ -Raw | ConvertFrom-Json
+  $failed = ($r.gates | Where-Object { -not $_.passed } | ForEach-Object { $_.gate }) -join ", "
+  "$($r.label): $($r.overall)  failed: $failed"
+}
+
+# What changed since before the fixes
+git diff part1a-before-fixes --stat
+
+# Proof you didn't weaken the lint config
+git diff part1a-before-fixes -- .harness/ruff.toml
+
+# Commit history as a timeline
+git log --oneline# Which runs failed and which gates
+Get-ChildItem evidence\results\harness-run*.json | Sort-Object Name | ForEach-Object {
+  $r = Get-Content $_ -Raw | ConvertFrom-Json
+  $failed = ($r.gates | Where-Object { -not $_.passed } | ForEach-Object { $_.gate }) -join ", "
+  "$($r.label): $($r.overall)  failed: $failed"
+}
+
+# What changed since before the fixes
+git diff part1a-before-fixes --stat
+
+# Proof you didn't weaken the lint config
+git diff part1a-before-fixes -- .harness/ruff.toml
+
+# Commit history as a timeline
+git log --oneline# Which runs failed and which gates
+Get-ChildItem evidence\results\harness-run*.json | Sort-Object Name | ForEach-Object {
+  $r = Get-Content $_ -Raw | ConvertFrom-Json
+  $failed = ($r.gates | Where-Object { -not $_.passed } | ForEach-Object { $_.gate }) -join ", "
+  "$($r.label): $($r.overall)  failed: $failed"
+}
+
+# What changed since before the fixes
+git diff part1a-before-fixes --stat
+
+# Proof you didn't weaken the lint config
+git diff part1a-before-fixes -- .harness/ruff.toml
+
+# Commit history as a timeline
+git log --oneline# Which runs failed and which gates
+Get-ChildItem evidence\results\harness-run*.json | Sort-Object Name | ForEach-Object {
+  $r = Get-Content $_ -Raw | ConvertFrom-Json
+  $failed = ($r.gates | Where-Object { -not $_.passed } | ForEach-Object { $_.gate }) -join ", "
+  "$($r.label): $($r.overall)  failed: $failed"
+}
+
+# What changed since before the fixes
+git diff part1a-before-fixes --stat
+
+# Proof you didn't weaken the lint config
+git diff part1a-before-fixes -- .harness/ruff.toml
+
+# Commit history as a timeline
+git log --oneline{
   "label": "run2",
   "captured_at": "20261108T202045Z",
   "overall": "FAIL",
