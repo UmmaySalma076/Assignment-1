@@ -1,0 +1,51 @@
+{
+  "label": "run1",
+  "captured_at": "20261108T201551Z",
+  "overall": "FAIL",
+  "gates": [
+    {
+      "gate": "syntax",
+      "passed": true,
+      "command": "-m compileall -q app tests",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "gate": "lint",
+      "passed": false,
+      "command": "-m ruff check . --config .harness/ruff.toml",
+      "exit_code": 1,
+      "stdout": "E501 Line too long (101 > 100)\n --> .harness\\run.py:1:101\n  |\n1 | \"\"\"Part 1A harness. Usage: python .harness/run.py --label NAME   |   python .harness/run.py --lock\"\"\"\n  |                                                                                                     ^\n2 | from __future__ import annotations\n  |\n\nE501 Line too long (105 > 100)\n  --> .harness\\run.py:24:101\n   |\n23 | def sh(cmd: list[str]) -> dict:\n24 |     p = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, encoding=\"utf-8\", errors=\"replace\")\n   |                                                                                                     ^^^^^\n25 |     return {\"exit_code\": p.returncode, \"stdout\": p.stdout[-6000:], \"stderr\": p.stderr[-3000:]}\n   |\n\nE501 Line too long (114 > 100)\n  --> .harness\\run.py:92:101\n   |\n90 |     stamp = datetime.now(UTC).strftime(\"%Y%m%dT%H%M%SZ\")\n91 |     RESULTS.mkdir(parents=True, exist_ok=True)\n92 |     report = {\"label\": args.label, \"captured_at\": stamp, \"overall\": \"PASS\" if overall else \"FAIL\", \"gates\": gates}\n   |                                                                                                     ^^^^^^^^^^^^^^\n93 |     out = RESULTS / f\"harness-{args.label}-{stamp}.json\"\n94 |     out.write_text(json.dumps(report, indent=2), encoding=\"utf-8\")\n   |\n\nE501 Line too long (103 > 100)\n  --> app\\api\\routes.py:29:101\n   |\n27 |         return created\n28 |     except ValueError as exc:\n29 |         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc\n   |                                                                                                     ^^^\n\nE501 Line too long (105 > 100)\n  --> app\\api\\routes.py:43:101\n   |\n42 | @router.get(\"/tasks/{task_id}\", response_model=TaskResponse)\n43 | def get_task(task_id: int, service: Annotated[TaskService, Depends(get_task_service)]) -> dict[str, Any]:\n   |                                                                                                     ^^^^^\n44 |     try:\n45 |         return service.get_task(task_id)\n   |\n\nE501 Line too long (103 > 100)\n  --> app\\api\\routes.py:66:101\n   |\n64 |         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc\n65 |     except ValueError as exc:\n66 |         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc\n   |                                                                                                     ^^^\n\nE501 Line too long (103 > 100)\n  --> app\\api\\routes.py:85:101\n   |\n83 |         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc\n84 |     except ValueError as exc:\n85 |         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc\n   |                                                                                                     ^^^\n\nE501 Line too long (103 > 100)\n  --> app\\api\\routes.py:99:101\n   |\n97 |         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc\n98 |     except ValueError as exc:\n99 |         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc\n   |                                                                                                     ^^^\n\nE501 Line too long (137 > 100)\n  --> app\\repositories\\task_repository.py:18:101\n   |\n16 | \u2026\n17 | \u2026\n18 | \u2026tr | None, completed: bool = False, created_at: str | None = None) -> dict[str, Any]:\n   |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n19 | \u2026stamp()\n20 | \u2026as connection:\n   |\n\nE501 Line too long (107 > 100)\n  --> tests\\contract\\test_task_api_contract.py:51:101\n   |\n50 | def test_create_task_contract(client: TestClient) -> None:\n51 |     response = client.post(\"/tasks\", json={\"title\": \"Contract task\", \"description\": \"Example description\"})\n   |                                                                                                     ^^^^^^^\n52 |     assert response.status_code == 201\n53 |     payload = response.json()\n   |\n\nE501 Line too long (112 > 100)\n  --> tests\\integration\\test_task_lifecycle.py:11:101\n   |\n10 | def test_create_list_and_get_task(client: TestClient) -> None:\n11 |     response = client.post(\"/tasks\", json={\"title\": \"Write tests\", \"description\": \"Draft the lifecycle checks\"})\n   |                                                                                                     ^^^^^^^^^^^^\n12 |     assert response.status_code == 201\n13 |     created = response.json()\n   |\n\nFound 11 errors.\n",
+      "stderr": ""
+    },
+    {
+      "gate": "security",
+      "passed": true,
+      "command": "-m bandit -r app -ll -q",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "gate": "tests+coverage",
+      "passed": true,
+      "command": "-m pytest -q --cov=app --cov-fail-under=85",
+      "exit_code": 0,
+      "stdout": "............................                                             [100%]\n============================== warnings summary ===============================\n.venv\\Lib\\site-packages\\fastapi\\testclient.py:1\n  c:\\Users\\Admin\\Projects\\Assignment-1\\Part-1A\\.venv\\Lib\\site-packages\\fastapi\\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\ntests/integration/test_task_lifecycle.py::test_delete_and_missing_task_errors\n  c:\\Users\\Admin\\Projects\\Assignment-1\\Part-1A\\.venv\\Lib\\site-packages\\fastapi\\routing.py:428: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x00000228B7CD64D0>\n    async def app(request: Request) -> Response:\n  Enable tracemalloc to get traceback where the object was allocated.\n  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.\n\ntests/integration/test_task_lifecycle.py::test_delete_and_missing_task_errors\n  c:\\Users\\Admin\\Projects\\Assignment-1\\Part-1A\\.venv\\Lib\\site-packages\\fastapi\\routing.py:428: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x00000228B7CD48B0>\n    async def app(request: Request) -> Response:\n  Enable tracemalloc to get traceback where the object was allocated.\n  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=============================== tests coverage ================================\n_______________ coverage: platform win32, python 3.13.1-final-0 _______________\n\nName                                  Stmts   Miss  Cover\n---------------------------------------------------------\napp\\__init__.py                           0      0   100%\napp\\api\\__init__.py                       0      0   100%\napp\\api\\deps.py                           6      3    50%\napp\\api\\routes.py                        58     12    79%\napp\\config.py                             6      0   100%\napp\\database.py                          33      1    97%\napp\\logging.py                           13      0   100%\napp\\main.py                              15      0   100%\napp\\models\\__init__.py                    0      0   100%\napp\\models\\task.py                        8      8     0%\napp\\repositories\\__init__.py              0      0   100%\napp\\repositories\\task_repository.py      47      1    98%\napp\\schemas\\__init__.py                   0      0   100%\napp\\schemas\\task.py                      52      7    87%\napp\\services\\__init__.py                  0      0   100%\napp\\services\\task_service.py             46      2    96%\napp\\utils\\__init__.py                     0      0   100%\napp\\utils\\validation.py                  24      4    83%\n---------------------------------------------------------\nTOTAL                                   308     38    88%\nRequired test coverage of 85% reached. Total coverage: 87.66%\n28 passed, 3 warnings in 1.43s\n",
+      "stderr": ""
+    },
+    {
+      "gate": "traceability",
+      "passed": false,
+      "expected": "every spec ID appears in tests (21 IDs)",
+      "observed": "missing from tests: ['FR-001', 'FR-002', 'FR-003', 'FR-004', 'FR-005', 'FR-006', 'FR-007', 'FR-008', 'FR-009', 'FR-010', 'FR-011', 'FR-012', 'FR-013', 'FR-014', 'NFR-001', 'NFR-002', 'NFR-003', 'NFR-004', 'NFR-005', 'NFR-006', 'NFR-007']"
+    },
+    {
+      "gate": "guardrails",
+      "passed": true,
+      "expected": "no noqa/nosec; protected config unchanged",
+      "observed": "ok"
+    }
+  ]
+}
