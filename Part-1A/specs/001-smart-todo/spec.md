@@ -30,6 +30,9 @@ Users need a simple, reliable way to track tasks across their workday. The appli
 - Q: Task persistence strategy → A: Embedded SQLite database for persistent, deterministic task storage across restarts.
 - Q: Canonical task identifier in response objects → A: The response field is `id`, not `task_id`.
 - Q: Acceptance-criteria identification and traceability → A: On 2026-11-09, assign each acceptance criterion a unique AC-xxx ID, make its expected result binary and testable, and map it to the FR/NFR identifiers it verifies in an AC-to-FR/NFR traceability table.
+- Q: PUT and PATCH update semantics → A: PUT replaces the full task content; `title` is required, and omitted `description` and `completed` reset to `""` and `false`. PATCH changes only supplied fields and retains all other values.
+- Q: AC-to-FR/NFR traceability accuracy → A: On 2026-11-09, include only mappings each acceptance scenario directly verifies and add mappings for the correctly verified requirements.
+- Q: Measurable task-list capacity and latency → A: On 2026-11-09, the service must handle at least 1,000 stored tasks, and a test must verify `GET /tasks` returns in under 500 ms with that dataset.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -60,7 +63,8 @@ A user wants to inspect a single task and later change its content or status wit
 **Acceptance Scenarios**:
 
 1. **AC-004 — Retrieve a task:** **Given** a stored task with ID `{id}`, **When** the client sends `GET /tasks/{id}`, **Then** the response status is `200` and the response JSON equals the stored task object, including its `id`, `title`, `description`, `completed`, and `created_at` values.
-2. **AC-005 — Update a task:** **Given** a stored task, **When** the client sends a valid `PUT /tasks/{id}` or `PATCH /tasks/{id}` changing the title, description, and/or completion status, **Then** the response status is `200`; every supplied field equals its requested value; omitted `PATCH` fields retain their prior values; `id` and `created_at` equal their pre-update values; and a subsequent `GET /tasks/{id}` returns the same updated task object.
+2. **AC-005 — Replace a task with PUT:** **Given** a stored task, **When** the client sends `PUT /tasks/{id}` with a valid body containing a title and omitting `description` and `completed`, **Then** the response status is `200`; `title` equals the submitted title; `description` equals `""`; `completed` equals `false`; `id` and `created_at` equal their pre-update values; and a subsequent `GET /tasks/{id}` returns the same updated task object. When either optional field is supplied, its response value equals the submitted value.
+3. **AC-006 — Partially update a task with PATCH:** **Given** a stored task, **When** the client sends a valid `PATCH /tasks/{id}` changing one or more task fields, **Then** the response status is `200`; every supplied field equals its requested value; every omitted field retains its prior value; `id` and `created_at` equal their pre-update values; and a subsequent `GET /tasks/{id}` returns the same updated task object.
 
 ---
 
@@ -74,12 +78,12 @@ A user wants to remove completed or unnecessary tasks and change a task between 
 
 **Acceptance Scenarios**:
 
-1. **AC-006 — Mark completed:** **Given** a pending task, **When** the client sends `PATCH /tasks/{id}/status` with `{"completed":true}`, **Then** the response status is `200`, the response field `completed` equals `true`, and a subsequent `GET /tasks/{id}` returns `completed` equal to `true`.
-2. **AC-007 — Mark pending:** **Given** a completed task, **When** the client sends `PATCH /tasks/{id}/status` with `{"completed":false}`, **Then** the response status is `200`, the response field `completed` equals `false`, and a subsequent `GET /tasks/{id}` returns `completed` equal to `false`.
-3. **AC-008 — Repeat completed state:** **Given** a completed task, **When** the client sends the same `{"completed":true}` status update again, **Then** the response status is `200`, the response field `completed` equals `true`, and the persistence schema contains no completion-history record for that task.
-4. **AC-009 — Repeat pending state:** **Given** a pending task, **When** the client sends the same `{"completed":false}` status update again, **Then** the response status is `200`, the response field `completed` equals `false`, and the persistence schema contains no completion-history record for that task.
-5. **AC-010 — Delete a task:** **Given** a stored task with ID `{id}`, **When** the client sends `DELETE /tasks/{id}`, **Then** the response status is `204` with an empty body, and a subsequent `GET /tasks/{id}` returns status `404`.
-6. **AC-011 — Persist tasks across restart:** **Given** a task has been stored in SQLite, **When** the application is restarted and the client sends `GET /tasks/{id}`, **Then** the response status is `200` and the returned task has the same `id`, `title`, `description`, `completed`, and `created_at` values as before restart.
+1. **AC-007 — Mark completed:** **Given** a pending task, **When** the client sends `PATCH /tasks/{id}/status` with `{"completed":true}`, **Then** the response status is `200`, the response field `completed` equals `true`, and a subsequent `GET /tasks/{id}` returns `completed` equal to `true`.
+2. **AC-008 — Mark pending:** **Given** a completed task, **When** the client sends `PATCH /tasks/{id}/status` with `{"completed":false}`, **Then** the response status is `200`, the response field `completed` equals `false`, and a subsequent `GET /tasks/{id}` returns `completed` equal to `false`.
+3. **AC-009 — Repeat completed state:** **Given** a completed task, **When** the client sends the same `{"completed":true}` status update again, **Then** the response status is `200`, the response field `completed` equals `true`, and the persistence schema contains no completion-history record for that task.
+4. **AC-010 — Repeat pending state:** **Given** a pending task, **When** the client sends the same `{"completed":false}` status update again, **Then** the response status is `200`, the response field `completed` equals `false`, and the persistence schema contains no completion-history record for that task.
+5. **AC-011 — Delete a task:** **Given** a stored task with ID `{id}`, **When** the client sends `DELETE /tasks/{id}`, **Then** the response status is `204` with an empty body, and a subsequent `GET /tasks/{id}` returns status `404`.
+6. **AC-012 — Persist tasks across restart:** **Given** a task has been stored in SQLite, **When** the application is restarted and the client sends `GET /tasks/{id}`, **Then** the response status is `200` and the returned task has the same `id`, `title`, `description`, `completed`, and `created_at` values as before restart.
 
 ---
 
@@ -93,9 +97,19 @@ A user or client may provide invalid task data or request a task that does not e
 
 **Acceptance Scenarios**:
 
-1. **AC-012 — Reject invalid task data:** **Given** a create request with a missing, empty, or whitespace-only title; a create or update request with a title longer than `100` characters or description longer than `1000` characters; or an update or status-update request with a non-boolean completion value, **When** the client submits the request, **Then** the response status is `422` and the affected stored task data is unchanged (or, for create, no task is added).
-2. **AC-013 — Report a missing task:** **Given** no task exists for ID `99999`, **When** the client sends `GET /tasks/99999`, `PUT /tasks/99999` or `PATCH /tasks/99999` with a valid update body, `PATCH /tasks/99999/status` with `{"completed":true}`, or `DELETE /tasks/99999`, **Then** each response status is `404` and no task is created or modified.
-3. **AC-014 — Enforce field-length boundaries:** **Given** a create request with a `100`-character title and a `1000`-character description, **When** the client sends `POST /tasks`, **Then** the response status is `201` and both returned strings exactly equal the submitted strings. A create request with a `101`-character title or `1001`-character description returns status `422`.
+1. **AC-013 — Reject invalid task data:** **Given** a create request with a missing, empty, or whitespace-only title; a create or update request with a title longer than `100` characters or description longer than `1000` characters; or an update or status-update request with a non-boolean completion value, **When** the client submits the request, **Then** the response status is `422` and the affected stored task data is unchanged (or, for create, no task is added).
+2. **AC-014 — Report a missing task:** **Given** no task exists for ID `99999`, **When** the client sends `GET /tasks/99999`, `PUT /tasks/99999` or `PATCH /tasks/99999` with a valid update body, `PATCH /tasks/99999/status` with `{"completed":true}`, or `DELETE /tasks/99999`, **Then** each response status is `404` and no task is created or modified.
+3. **AC-015 — Enforce field-length boundaries:** **Given** a create request with a `100`-character title and a `1000`-character description, **When** the client sends `POST /tasks`, **Then** the response status is `201` and both returned strings exactly equal the submitted strings. A create request with a `101`-character title or `1001`-character description returns status `422`.
+
+### User Story 5 - Handle a 1,000-task list (Priority: P2)
+
+A user needs the task list to remain responsive when it contains at least 1,000 stored tasks.
+
+**Independent Test**: Can be fully tested by storing 1,000 tasks and measuring the response time of `GET /tasks`.
+
+**Acceptance Scenarios**:
+
+1. **AC-016 — List 1,000 tasks within the response-time limit:** **Given** exactly 1,000 tasks are stored, **When** a test sends `GET /tasks` and measures only the request/response duration (excluding dataset setup), **Then** the response status is `200`, the response contains all 1,000 tasks, and the measured duration is less than `500 ms`.
 
 ### Edge Cases
 
@@ -113,20 +127,22 @@ A user or client may provide invalid task data or request a task that does not e
 
 | Acceptance criterion | Functional requirements verified | Non-functional requirements verified |
 |---|---|---|
-| AC-001 | FR-001, FR-002, FR-003, FR-012, FR-013 | NFR-001, NFR-002, NFR-005, NFR-006 |
-| AC-002 | FR-004, FR-012, FR-013 | NFR-002, NFR-004 |
-| AC-003 | FR-004 | NFR-002, NFR-004 |
+| AC-001 | FR-001, FR-002, FR-003, FR-012, FR-013 | NFR-002, NFR-005 |
+| AC-002 | FR-004, FR-012, FR-013 | NFR-002, NFR-005 |
+| AC-003 | FR-004 | NFR-002, NFR-005 |
 | AC-004 | FR-005, FR-012 | NFR-005 |
-| AC-005 | FR-006, FR-011, FR-012 | NFR-001, NFR-003, NFR-005 |
-| AC-006 | FR-008, FR-011 | NFR-002, NFR-005 |
+| AC-005 | FR-006, FR-012 | NFR-002, NFR-005 |
+| AC-006 | FR-006, FR-011, FR-012 | NFR-002, NFR-005 |
 | AC-007 | FR-008, FR-011 | NFR-002, NFR-005 |
-| AC-008 | FR-008, FR-011, FR-013 | NFR-002 |
-| AC-009 | FR-008, FR-011, FR-013 | NFR-002 |
-| AC-010 | FR-007, FR-010 | NFR-005 |
-| AC-011 | FR-002, FR-003, FR-012, FR-014 | NFR-001, NFR-007 |
-| AC-012 | FR-009 | NFR-003, NFR-005 |
-| AC-013 | FR-010 | NFR-005 |
-| AC-014 | FR-009, FR-012 | NFR-003, NFR-005 |
+| AC-008 | FR-008, FR-011 | NFR-002, NFR-005 |
+| AC-009 | FR-008, FR-011 | NFR-002 |
+| AC-010 | FR-008, FR-011 | NFR-002 |
+| AC-011 | FR-007, FR-010 | NFR-005 |
+| AC-012 | FR-002, FR-003, FR-012, FR-014 | NFR-001, NFR-007 |
+| AC-013 | FR-009 | NFR-003, NFR-005 |
+| AC-014 | FR-010 | NFR-005 |
+| AC-015 | FR-009, FR-012 | NFR-003, NFR-005 |
+| AC-016 | FR-004 | NFR-001 |
 
 ## Requirements *(mandatory)*
 
@@ -137,12 +153,12 @@ A user or client may provide invalid task data or request a task that does not e
 - **FR-003**: The system MUST store each task's creation timestamp at the time the task is created.
 - **FR-004**: The system MUST return all tasks in a deterministic and consistent order when the user requests the full task list.
 - **FR-005**: The system MUST allow a user to retrieve a single task by its unique ID.
-- **FR-006**: The system MUST allow a user to update a task's title, description, and/or completion status.
+- **FR-006**: The system MUST allow a user to update a task's title, description, and/or completion status. PUT MUST replace the full task content, require `title`, and default omitted `description` and `completed` to `""` and `false`, respectively. PATCH MUST change only supplied fields and retain all omitted field values.
 - **FR-007**: The system MUST allow a user to delete a task by its unique ID.
 - **FR-008**: The system MUST allow a user to mark a task as completed or pending using idempotent state-setting operations. Repeating the same completion value MUST leave the task in that current state without creating completion-history records.
 - **FR-009**: The system MUST reject invalid task data before storing or updating a task.
 - **FR-010**: The system MUST return a clear not-found error when a requested task ID does not exist.
-- **FR-011**: The system MUST preserve the current completion state of each task across updates and retrievals. Historical completion transitions are not required in v1, and no completion history MUST be introduced by the API or persistence layer.
+- **FR-011**: The system MUST preserve the current completion state of each task across PATCH operations and retrievals. PUT follows the full-replacement defaults defined in FR-006. Historical completion transitions are not required in v1, and no completion history MUST be introduced by the API or persistence layer.
 - **FR-012**: The system MUST ensure every task record contains the required fields: unique ID, title, optional description, completion status, and creation timestamp.
 - **FR-013**: The system MUST behave deterministically for identical valid inputs in a controlled test environment. Runtime-generated IDs and timestamps may vary across runs in production, but API responses, ordering, validation, and state transitions MUST remain stable and testable. Exact-value assertions in tests MUST freeze or stub time and identifier generation with controlled values; production IDs and timestamps MUST remain runtime-generated and MUST NOT be made static.
 - **FR-014**: The application MUST persist task data in an embedded SQLite database to provide small-scale durability and consistent behavior across restarts.
@@ -168,13 +184,13 @@ The application MUST expose the following HTTP task operations for the task reso
   - Response MUST be 404 Not Found when the task does not exist.
 
 - **PUT /tasks/{task_id}**
-  - Replaces the task content with a new valid task payload.
+  - Replaces the full task content with a valid task payload. `title` is required. Omitted `description` and `completed` default to `""` and `false`, respectively.
   - Response MUST be 200 OK with the updated task object.
   - Response MUST be 404 Not Found when the task is missing.
   - Response MUST be 422 Unprocessable Entity for invalid request data.
 
 - **PATCH /tasks/{task_id}**
-  - Updates one or more task fields, including completion status.
+  - Updates one or more supplied task fields, including completion status. Fields omitted from the request retain their existing values.
   - Response MUST be 200 OK with the updated task object.
   - Response MUST be 404 Not Found when the task is missing.
   - Response MUST be 422 Unprocessable Entity for invalid request data.
@@ -213,7 +229,7 @@ The application MUST expose the following HTTP task operations for the task reso
 
 ### Non-Functional Requirements
 
-- **NFR-001**: The task service MUST support reliable task operations for a single user workflow and a small to moderate dataset without data loss or contradiction.
+- **NFR-001**: The task service MUST support reliable task operations for a single user workflow and at least 1,000 stored tasks without data loss or contradiction. With exactly 1,000 stored tasks, `GET /tasks` MUST return all 1,000 tasks in under 500 ms in a test; dataset setup time is excluded from the measurement.
 - **NFR-002**: The application MUST provide deterministic behavior for the same request sequence under equivalent conditions.
 - **NFR-003**: The system MUST validate all user inputs before mutation to prevent invalid state.
 - **NFR-004**: The application MUST emit consistent observable behavior suitable for automated testing and review.
@@ -236,12 +252,13 @@ The application MUST expose the following HTTP task operations for the task reso
 - **SC-004**: A missing task ID consistently yields a defined not-found response across retrieval, update, status change, and deletion actions.
 - **SC-005**: The application exposes a predictable API contract that remains stable under the required task lifecycle operations.
 - **SC-006**: A reviewer can verify the task lifecycle using automated tests without ambiguity or hidden state assumptions.
+- **SC-007**: With exactly 1,000 stored tasks, a test verifies that `GET /tasks` returns status `200`, includes all 1,000 tasks, and completes in less than 500 ms, excluding dataset setup time.
 
 ## Assumptions
 
 - The application is a single-user or single-tenant task tracker unless stated otherwise by the project specification.
 - Task data is persisted in an embedded SQLite database to provide reliable storage without introducing external infrastructure or service dependencies.
 - Task ordering is defined by the application and must be deterministic across equivalent runs.
-- A task can be updated incrementally or in full, with validation applied in both cases.
+- PUT replaces the full task content with the required title and optional description/completion defaults; PATCH changes only supplied fields. Both operations validate all supplied data before mutation.
 - The application is expected to be validated using automated pytest-based tests and API contract checks.
 - The system is expected to freeze or stub generated IDs and timestamps during automated tests when exact values are asserted, while still preserving normal runtime uniqueness guarantees.

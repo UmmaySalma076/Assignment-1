@@ -143,8 +143,9 @@
 
 - Setup tasks T003, T004, and T005 can run in parallel.
 - Foundational tasks T008, T009, T010, and T013 can run in parallel when the base project structure exists.
-- Story test tasks for each user story can run in parallel with their implementation tasks when the foundation is complete.
-- The final validation tasks T036 through T043 can run in parallel once all feature implementation tasks are complete, with T040/T041/T042 executed against the same captured harness evidence and human review records.
+- Test tasks for different user stories may be prepared in parallel after the foundation is complete, but each test MUST be written and run before the corresponding implementation change begins, in accordance with the constitution's test-first requirement.
+- T036-T043 are already-completed historical validation tasks and do not replace the required Harness v2 run. The new final phase T044-T051 must be completed strictly in sequence.
+- The new Harness v2 and remediation phase (T044-T051) is strictly sequential; none of its tasks may run in parallel or start before the preceding task is complete.
 
 ---
 
@@ -173,7 +174,51 @@
 - FR-002, FR-005, FR-006, FR-007, FR-008, FR-010, FR-011, FR-014: T006, T008, T024, T025, T026, T027, T032, T033, T034
 - FR-004, FR-013, NFR-002: T011, T017, T023, T035, T036
 - FR-009, Input Validation Rules, Error Handling: T009, T010, T020, T028, T030, T031, T034
-- NFR-005, NFR-007, Constitution observability/security requirements: T012, T037, T038
+- NFR-001: T046, T048 (1,000-task response-time test and revalidation)
+- NFR-002: T005, T011, T015, T023, T035, T037, T046, T048
+- NFR-003: T009, T010, T020, T028, T030, T031, T034, T046
+- NFR-004: T012, T021, T043, T044, T045, T048, T050
+- NFR-005, NFR-007, Constitution observability/security requirements: T006, T012, T037, T038, T044, T045, T048
+- NFR-006: T002, T044, T046, T048
 - SC-001 through SC-006 and all user stories: T014-T043
+- SC-007: T046, T048
+
+## Phase 7: Harness v2 and remediation
+
+**Purpose**: Enforce constitution v1.1.0 quality gates, close requirement/test traceability gaps, validate the revised acceptance criteria, preserve reproducible evidence, and require a final human decision.
+
+**Execution rule**: Complete T044 through T051 in order. Each task depends on the immediately preceding task; do not run these tasks in parallel. T051 is the Harness v2 human decision and must not be completed until T044-T050 are complete.
+
+- [ ] T044 Create `.harness/ruff.toml` under student/human control (the implementation agent MUST NOT modify this file) and create `.harness/run.py` to enforce the constitution v1.1.0 gates: run `ruff check . --config .harness/ruff.toml` and require exit 0 with zero violations; run `bandit -r app -ll` and require zero MEDIUM/HIGH issues; run all pytest tests with `app/` line coverage at least 85%; verify every active FR-xxx and NFR-xxx identifier appears in at least one test; and check constitution guardrails prohibiting `# noqa`/`# nosec`, weakened or skipped tests/acceptance criteria, lowered quality thresholds, edited recorded results, and committed secrets or `.env` files. Do not modify the constitution. (Constitution v1.1.0; prerequisite for T045)
+- [ ] T045 Run `.harness/run.py` against the current implementation and save the complete initial report, exact commands and outputs, and pass/fail results under `specs/001-smart-todo/evidence/results/`. Preserve failures as observed; do not repair code during this task. (Depends on T044)
+- [ ] T046 Add all applicable FR-xxx and NFR-xxx identifiers to tests in `tests/contract/test_task_api_contract.py`, `tests/integration/test_task_lifecycle.py`, and `tests/unit/test_task_validation.py`; update contract tests for PUT replacement defaults (AC-005) and PATCH omitted-field retention (AC-006); add an integration test that proves SQLite task data survives an application/database-manager restart (AC-012 in the current spec; previously numbered AC-011); and add an integration performance test that prepares exactly 1,000 tasks before timing `GET /tasks`, asserts status 200, all 1,000 returned tasks, and response time under 500 ms (AC-016). Write and run each new acceptance-behavior test and capture its failing result against the current code before making any corresponding implementation change; preserve the observed failing output in `specs/001-smart-todo/evidence/results/`. (Depends on T045; FR/NFR traceability, AC-005, AC-006, AC-012, AC-016, SC-007)
+- [ ] T047 Repair failures only when supported by the saved harness/test evidence in `specs/001-smart-todo/evidence/results/`; make the smallest code changes necessary, preserve the original failure evidence, and record each evidence-to-repair relationship. Do not modify tests or acceptance criteria to make a failure pass. (Depends on T046)
+- [ ] T048 Re-run the exact same `.harness/run.py` harness and gates used in T045, without weakening or changing them, and save the complete repaired-run report, commands, outputs, and results under `specs/001-smart-todo/evidence/results/`. (Depends on T047)
+- [ ] T049 Preserve the final validated source snapshot in `specs/001-smart-todo/evidence/final-generation/`, with provenance linking it to the passing T048 report. (Depends on T048)
+- [ ] T050 Write `specs/001-smart-todo/evidence/harness-log.md` (done by the student), recording the ordered T044-T049 execution, exact evidence paths, test-first failures, evidence-based repairs, final harness results, and snapshot provenance. Do not invent results or record the human decision here. (Depends on T049)
+- [ ] T051 After T044-T050 are complete, obtain and record a human ACCEPT or REJECT decision and the human's justification in `specs/001-smart-todo/evidence/results/human-review.json`. The decision must review the initial and final harness reports, test reports, security scan, failure/repair evidence, final snapshot, and harness log. The AI MUST NOT make or imply this decision. (Depends on T050; final gate)
+
+### Acceptance Criterion to Test Task Mapping
+
+| Acceptance criterion | Test task(s) |
+|---|---|
+| AC-001 | T014, T015 |
+| AC-002 | T014, T015 |
+| AC-003 | T014, T015, T035 |
+| AC-004 | T022, T023 |
+| AC-005 | T022, T023, T046 |
+| AC-006 | T022, T023, T046 |
+| AC-007 | T022, T023 |
+| AC-008 | T022, T023 |
+| AC-009 | T022, T023 |
+| AC-010 | T022, T023 |
+| AC-011 | T029, T030 |
+| AC-012 | T046 |
+| AC-013 | T029, T030, T031 |
+| AC-014 | T029, T030 |
+| AC-015 | T031 |
+| AC-016 | T046, T048 |
+
+This phase adds Harness v2 verification without changing or unchecking any previously completed task. Existing completed tasks and their recorded outcomes remain intact.
 
 This task list preserves the specification, quality gates, and acceptance criteria without weakening the required implementation requirements.
