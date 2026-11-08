@@ -1,0 +1,12 @@
+{
+  "command": "python -m ruff check .",
+  "exit_code": 1,
+  "scope": "The project scan included the archived entry-state source copy under specs/001-smart-todo/evidence/initial-source.",
+  "captured_output_excerpt": "B008 was reported in specs/001-smart-todo/evidence/initial-source/app/api/routes.py at the previous Depends default argument.",
+  "full_output_preserved": false,
+  "resolution": "Ruff now excludes only the archived initial-source folder. The B008 rule remains enabled for active application and test code; FastAPI route dependencies use Annotated.",
+  "revalidation": {
+    "command": "python -m ruff check .",
+    "exit_code": 0
+  }
+}

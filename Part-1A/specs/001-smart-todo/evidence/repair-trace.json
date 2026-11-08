@@ -1,0 +1,88 @@
+{
+  "baseline_runs": [
+    {
+      "command": "python -m pytest tests/integration/test_task_lifecycle.py::test_create_uses_controlled_generated_id_and_timestamp tests/contract/test_task_api_contract.py::test_validation_contract_rejects_non_boolean_status -q",
+      "exit_code": 1,
+      "log": "test-first-baseline.txt",
+      "observed_failures": [
+        "TaskRepository.__init__() got an unexpected keyword argument 'id_generator'",
+        "A string status value was accepted with HTTP 200 instead of HTTP 422"
+      ]
+    },
+    {
+      "command": "python -m pytest tests/contract/test_task_api_contract.py::test_task_requests_emit_structured_logs -q",
+      "exit_code": 1,
+      "log": "test-first-logging-baseline.txt",
+      "observed_failures": [
+        "No task.created event was emitted"
+      ]
+    },
+    {
+      "command": "python -m ruff check .",
+      "exit_code": 1,
+      "log": "ruff-archived-baseline-scan.json",
+      "observed_failures": [
+        "B008 was reported in archived initial-source/app/api/routes.py; the full output was not preserved because the tool redirected oversized output."
+      ]
+    },
+    {
+      "command": "python -m pytest tests/integration/test_task_lifecycle.py::test_create_uses_controlled_generated_id_and_timestamp tests/contract/test_task_api_contract.py::test_validation_contract_rejects_non_boolean_status tests/contract/test_task_api_contract.py::test_task_requests_emit_structured_logs tests/contract/test_task_api_contract.py::test_get_and_update_task_contract tests/integration/test_task_lifecycle.py::test_update_task_preserves_unmodified_fields -q",
+      "exit_code": 1,
+      "log": "targeted-repair-tests.txt",
+      "observed_failures": [
+        "The log assertion selected the first request (POST) while expecting the later GET request; captured output showed both request events with the expected method, path, and status."
+      ]
+    }
+  ],
+  "repairs_and_revalidation": [
+    {
+      "failure_log": "test-first-baseline.txt",
+      "changes": [
+        "Added an optional repository ID generator for tests; production continues to use SQLite-generated IDs when no generator is supplied.",
+        "Added StrictBool validation to status and task-update request schemas."
+      ],
+      "verification_log": "targeted-repair-tests-rerun.txt",
+      "verification_result": "5 passed"
+    },
+    {
+      "failure_log": "test-first-logging-baseline.txt",
+      "changes": [
+        "Added JSON structured log formatting, task create/list events, and HTTP request completion metadata."
+      ],
+      "verification_log": "targeted-repair-tests-rerun.txt",
+      "verification_result": "Structured log assertions passed."
+    },
+    {
+      "failure_log": "targeted-repair-tests.txt",
+      "changes": [
+        "Selected the captured GET request record explicitly in the test assertion."
+      ],
+      "verification_log": "targeted-repair-tests-rerun.txt",
+      "verification_result": "The focused tests passed."
+    },
+    {
+      "failure_log": "ruff-archived-baseline-scan.json",
+      "changes": [
+        "Changed active FastAPI route dependencies to Annotated.",
+        "Configured Ruff to exclude only the archived entry-state source copy; no Ruff rule is ignored."
+      ],
+      "verification_command": "python -m ruff check .",
+      "verification_result": "Passed with all Ruff rules enabled for active source."
+    }
+  ],
+  "final_validation": {
+    "initial_code_snapshot": "initial-code-state.zip",
+    "initial_source_overrides": "initial-source/",
+    "report": "final-review-20261108T192703634738Z-report.json",
+    "log": "final-review-20261108T192703634738Z.log",
+    "code_snapshot": "final-review-20261108T192703634738Z-code.zip",
+    "checks": {
+      "syntax": 0,
+      "ruff": 0,
+      "pytest": 0,
+      "bandit": 0
+    },
+    "pytest_summary": "28 passed, 1 warning in 1.46s",
+    "bandit_summary": "No issues identified."
+  }
+}

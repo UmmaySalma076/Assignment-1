@@ -1,0 +1,57 @@
+{
+  "label": "post-repair",
+  "captured_at": "2026-11-08T19:19:18.797156+00:00",
+  "python": "3.13.1 (tags/v3.13.1:0671451, Dec  3 2024, 19:06:28) [MSC v.1942 64 bit (AMD64)]",
+  "code_snapshot": "post-repair-20261108T191918774468Z-code.zip",
+  "checks": [
+    {
+      "name": "syntax",
+      "command": [
+        "C:\\Python313\\python.exe",
+        "-m",
+        "compileall",
+        "-q",
+        "app",
+        "tests"
+      ],
+      "exit_code": 0,
+      "output": ""
+    },
+    {
+      "name": "ruff",
+      "command": [
+        "C:\\Python313\\python.exe",
+        "-m",
+        "ruff",
+        "check",
+        "."
+      ],
+      "exit_code": 0,
+      "output": "All checks passed!\n"
+    },
+    {
+      "name": "pytest",
+      "command": [
+        "C:\\Python313\\python.exe",
+        "-m",
+        "pytest",
+        "-q"
+      ],
+      "exit_code": 0,
+      "output": "............................                                             [100%]\n============================== warnings summary ===============================\n..\\..\\..\\AppData\\Roaming\\Python\\Python313\\site-packages\\fastapi\\testclient.py:1\n  C:\\Users\\Admin\\AppData\\Roaming\\Python\\Python313\\site-packages\\fastapi\\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n28 passed, 1 warning in 0.87s\n"
+    },
+    {
+      "name": "bandit",
+      "command": [
+        "C:\\Python313\\python.exe",
+        "-m",
+        "bandit",
+        "-r",
+        "app"
+      ],
+      "exit_code": 0,
+      "output": "[main]\tINFO\tprofile include tests: None\n[main]\tINFO\tprofile exclude tests: None\n[main]\tINFO\tcli include tests: None\n[main]\tINFO\tcli exclude tests: None\n[main]\tINFO\trunning on Python 3.13.1\nRun started:2026-11-08 19:19:23.443740+00:00\n\nTest results:\n\tNo issues identified.\n\nCode scanned:\n\tTotal lines of code: 433\n\tTotal lines skipped (#nosec): 0\n\tTotal potential issues skipped due to specifically being disabled (e.g., #nosec BXXX): 0\n\nRun metrics:\n\tTotal issues (by severity):\n\t\tUndefined: 0\n\t\tLow: 0\n\t\tMedium: 0\n\t\tHigh: 0\n\tTotal issues (by confidence):\n\t\tUndefined: 0\n\t\tLow: 0\n\t\tMedium: 0\n\t\tHigh: 0\nFiles skipped (0):\n"
+    }
+  ],
+  "failed_checks": []
+}
