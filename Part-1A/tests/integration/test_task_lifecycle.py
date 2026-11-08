@@ -1,4 +1,6 @@
 import sqlite3
+import sys
+import time
 
 import pytest
 from fastapi.testclient import TestClient
@@ -8,7 +10,11 @@ from app.repositories.task_repository import TaskRepository
 
 
 def test_create_list_and_get_task(client: TestClient) -> None:
-    response = client.post("/tasks", json={"title": "Write tests", "description": "Draft the lifecycle checks"})
+    """FR-001, FR-002, FR-003, FR-004, FR-005, FR-012, FR-013, NFR-002: Lifecycle."""
+    response = client.post(
+        "/tasks",
+        json={"title": "Write tests", "description": "Draft the lifecycle checks"},
+    )
     assert response.status_code == 201
     created = response.json()
     assert created["title"] == "Write tests"
@@ -27,6 +33,7 @@ def test_create_list_and_get_task(client: TestClient) -> None:
 
 
 def test_list_tasks_uses_ascending_id_order(client: TestClient) -> None:
+    """FR-004, FR-013, NFR-002: List order is deterministic."""
     first = client.post("/tasks", json={"title": "First"})
     second = client.post("/tasks", json={"title": "Second"})
 
@@ -40,6 +47,7 @@ def test_list_tasks_uses_ascending_id_order(client: TestClient) -> None:
 
 
 def test_update_task_preserves_unmodified_fields(client: TestClient) -> None:
+    """FR-006, FR-011, FR-012, NFR-002: PATCH preserves omitted fields."""
     create_response = client.post(
         "/tasks",
         json={"title": "Original title", "description": "Original description"},
@@ -56,6 +64,7 @@ def test_update_task_preserves_unmodified_fields(client: TestClient) -> None:
 
 
 def test_update_task_status_is_idempotent(client: TestClient) -> None:
+    """FR-008, FR-011, NFR-002: Repeated status-setting preserves current state."""
     create_response = client.post("/tasks", json={"title": "Review patch"})
     task_id = create_response.json()["id"]
 
@@ -79,6 +88,7 @@ def test_update_task_status_is_idempotent(client: TestClient) -> None:
 def test_create_uses_controlled_generated_id_and_timestamp(
     db_manager, monkeypatch
 ) -> None:
+    """FR-002, FR-003, FR-013, NFR-002: Runtime values are controlled in tests."""
     expected_timestamp = "2026-11-09T12:34:56Z"
     repository = TaskRepository(db_manager, id_generator=lambda: 73)
     monkeypatch.setattr(repository, "_current_timestamp", lambda: expected_timestamp)
@@ -90,6 +100,7 @@ def test_create_uses_controlled_generated_id_and_timestamp(
 
 
 def test_repository_rejects_duplicate_generated_ids(db_manager) -> None:
+    """FR-002, FR-009: Duplicate task identifiers cannot create another task."""
     repository = TaskRepository(db_manager, id_generator=lambda: 19)
     repository.create_task("First", None)
 
@@ -102,6 +113,7 @@ def test_repository_rejects_duplicate_generated_ids(db_manager) -> None:
 
 
 def test_sqlite_persists_tasks_across_manager_restart(tmp_path) -> None:
+    """FR-002, FR-003, FR-012, FR-014, NFR-007: SQLite data survives restart."""
     database_path = tmp_path / "persistent-tasks.db"
     manager = DatabaseManager(database_path=str(database_path))
     manager.initialize()
@@ -118,6 +130,7 @@ def test_sqlite_persists_tasks_across_manager_restart(tmp_path) -> None:
 
 
 def test_invalid_requests_do_not_mutate_tasks(client: TestClient) -> None:
+    """FR-009, NFR-003: Invalid requests do not mutate persisted data."""
     created = client.post("/tasks", json={"title": "Keep valid"})
     task_id = created.json()["id"]
 
@@ -134,6 +147,7 @@ def test_invalid_requests_do_not_mutate_tasks(client: TestClient) -> None:
 
 
 def test_delete_and_missing_task_errors(client: TestClient) -> None:
+    """FR-007, FR-010, NFR-005: Delete and missing-task responses are consistent."""
     create_response = client.post("/tasks", json={"title": "Delete me"})
     task_id = create_response.json()["id"]
 
@@ -145,3 +159,40 @@ def test_delete_and_missing_task_errors(client: TestClient) -> None:
 
     missing_delete = client.delete(f"/tasks/{task_id}")
     assert missing_delete.status_code == 404
+
+
+def test_list_1000_tasks_within_response_time(client: TestClient, db_manager) -> None:
+    """FR-004, NFR-001: GET /tasks returns 1,000 tasks in under 500 ms."""
+    rows = [
+        (f"Task {index}", "", 0, "2026-11-09T00:00:00Z")
+        for index in range(1000)
+    ]
+    with db_manager.get_connection() as connection:
+        connection.executemany(
+            """
+            INSERT INTO tasks (title, description, completed, created_at)
+            VALUES (?, ?, ?, ?)
+            """,
+            rows,
+        )
+        connection.commit()
+
+    start = time.perf_counter()
+    response = client.get("/tasks")
+    elapsed = time.perf_counter() - start
+
+    assert response.status_code == 200
+    assert len(response.json()) == 1000
+    assert elapsed < 0.5
+
+
+def test_required_runtime_and_test_stack() -> None:
+    """NFR-006: The project runs on Python 3.13 with FastAPI, Pydantic, and pytest."""
+    import fastapi
+    import pydantic
+    import pytest
+
+    assert sys.version_info[:2] == (3, 13)
+    assert fastapi.__version__
+    assert pydantic.__version__
+    assert pytest.__version__

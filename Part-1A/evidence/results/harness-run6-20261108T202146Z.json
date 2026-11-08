@@ -1,0 +1,51 @@
+{
+  "label": "run6",
+  "captured_at": "20261108T202146Z",
+  "overall": "FAIL",
+  "gates": [
+    {
+      "gate": "syntax",
+      "passed": true,
+      "command": "-m compileall -q app tests",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "gate": "lint",
+      "passed": false,
+      "command": "-m ruff check . --config .harness/ruff.toml",
+      "exit_code": 1,
+      "stdout": "E501 Line too long (101 > 100)\n --> .harness\\run.py:1:101\n  |\n1 | \"\"\"Part 1A harness. Usage: python .harness/run.py --label NAME   |   python .harness/run.py --lock\"\"\"\n  |                                                                                                     ^\n2 | from __future__ import annotations\n  |\n\nE501 Line too long (105 > 100)\n  --> .harness\\run.py:24:101\n   |\n23 | def sh(cmd: list[str]) -> dict:\n24 |     p = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, encoding=\"utf-8\", errors=\"replace\")\n   |                                                                                                     ^^^^^\n25 |     return {\"exit_code\": p.returncode, \"stdout\": p.stdout[-6000:], \"stderr\": p.stderr[-3000:]}\n   |\n\nE501 Line too long (114 > 100)\n  --> .harness\\run.py:92:101\n   |\n90 |     stamp = datetime.now(UTC).strftime(\"%Y%m%dT%H%M%SZ\")\n91 |     RESULTS.mkdir(parents=True, exist_ok=True)\n92 |     report = {\"label\": args.label, \"captured_at\": stamp, \"overall\": \"PASS\" if overall else \"FAIL\", \"gates\": gates}\n   |                                                                                                     ^^^^^^^^^^^^^^\n93 |     out = RESULTS / f\"harness-{args.label}-{stamp}.json\"\n94 |     out.write_text(json.dumps(report, indent=2), encoding=\"utf-8\")\n   |\n\nFound 3 errors.\n",
+      "stderr": ""
+    },
+    {
+      "gate": "security",
+      "passed": true,
+      "command": "-m bandit -r app -ll -q",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "gate": "tests+coverage",
+      "passed": true,
+      "command": "-m pytest -q --cov=app --cov-fail-under=85",
+      "exit_code": 0,
+      "stdout": "..............................                                           [100%]\n============================== warnings summary ===============================\n.venv\\Lib\\site-packages\\fastapi\\testclient.py:1\n  c:\\Users\\Admin\\Projects\\Assignment-1\\Part-1A\\.venv\\Lib\\site-packages\\fastapi\\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\ntests/integration/test_task_lifecycle.py::test_delete_and_missing_task_errors\n  c:\\Users\\Admin\\Projects\\Assignment-1\\Part-1A\\.venv\\Lib\\site-packages\\fastapi\\telemetry\\_api.py:139: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x000001A7ED571C60>\n    def get_telemetry_data(context: Context | None = None) -> TelemetryData | None:\n  Enable tracemalloc to get traceback where the object was allocated.\n  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.\n\ntests/integration/test_task_lifecycle.py::test_delete_and_missing_task_errors\n  c:\\Users\\Admin\\Projects\\Assignment-1\\Part-1A\\.venv\\Lib\\site-packages\\fastapi\\telemetry\\_api.py:139: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x000001A7ED570400>\n    def get_telemetry_data(context: Context | None = None) -> TelemetryData | None:\n  Enable tracemalloc to get traceback where the object was allocated.\n  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=============================== tests coverage ================================\n_______________ coverage: platform win32, python 3.13.1-final-0 _______________\n\nName                                  Stmts   Miss  Cover\n---------------------------------------------------------\napp\\__init__.py                           0      0   100%\napp\\api\\__init__.py                       0      0   100%\napp\\api\\deps.py                           6      3    50%\napp\\api\\routes.py                        58     12    79%\napp\\config.py                             6      0   100%\napp\\database.py                          33      1    97%\napp\\logging.py                           13      0   100%\napp\\main.py                              15      0   100%\napp\\models\\__init__.py                    0      0   100%\napp\\models\\task.py                        8      8     0%\napp\\repositories\\__init__.py              0      0   100%\napp\\repositories\\task_repository.py      47      1    98%\napp\\schemas\\__init__.py                   0      0   100%\napp\\schemas\\task.py                      52      7    87%\napp\\services\\__init__.py                  0      0   100%\napp\\services\\task_service.py             46      2    96%\napp\\utils\\__init__.py                     0      0   100%\napp\\utils\\validation.py                  24      4    83%\n---------------------------------------------------------\nTOTAL                                   308     38    88%\nRequired test coverage of 85% reached. Total coverage: 87.66%\n30 passed, 3 warnings in 0.95s\n",
+      "stderr": ""
+    },
+    {
+      "gate": "traceability",
+      "passed": true,
+      "expected": "every spec ID appears in tests (21 IDs)",
+      "observed": "all IDs referenced"
+    },
+    {
+      "gate": "guardrails",
+      "passed": true,
+      "expected": "no noqa/nosec; protected config unchanged",
+      "observed": "ok"
+    }
+  ]
+}

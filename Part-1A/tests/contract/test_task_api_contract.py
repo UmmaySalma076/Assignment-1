@@ -7,6 +7,7 @@ from app.logging import StructuredFormatter
 
 
 def test_task_requests_emit_structured_logs(client: TestClient) -> None:
+    """NFR-004: API request and task events are emitted as structured logs."""
     records: list[logging.LogRecord] = []
 
     class CaptureHandler(logging.Handler):
@@ -41,6 +42,7 @@ def test_task_requests_emit_structured_logs(client: TestClient) -> None:
 
 
 def test_list_tasks_contract_returns_empty_collection(client: TestClient) -> None:
+    """FR-004, NFR-002, NFR-005: Empty listings have a stable successful response."""
     response = client.get("/tasks")
 
     assert response.status_code == 200
@@ -48,7 +50,11 @@ def test_list_tasks_contract_returns_empty_collection(client: TestClient) -> Non
 
 
 def test_create_task_contract(client: TestClient) -> None:
-    response = client.post("/tasks", json={"title": "Contract task", "description": "Example description"})
+    """FR-001, FR-002, FR-003, FR-012, FR-013, NFR-002, NFR-005: Create contract."""
+    response = client.post(
+        "/tasks",
+        json={"title": "Contract task", "description": "Example description"},
+    )
     assert response.status_code == 201
     payload = response.json()
     assert set(payload) == {"id", "title", "description", "completed", "created_at"}
@@ -57,6 +63,7 @@ def test_create_task_contract(client: TestClient) -> None:
 
 
 def test_get_and_update_task_contract(client: TestClient) -> None:
+    """FR-005, FR-006, FR-011, FR-012, NFR-002, NFR-005: Read and update contract."""
     create_response = client.post("/tasks", json={"title": "Original", "description": "Initial"})
     task_id = create_response.json()["id"]
 
@@ -79,11 +86,13 @@ def test_get_and_update_task_contract(client: TestClient) -> None:
 
 
 def test_validation_contract_rejects_invalid_task_data(client: TestClient) -> None:
+    """FR-009, NFR-003, NFR-005: Invalid fields are rejected before mutation."""
     response = client.post("/tasks", json={"title": "", "description": "x" * 1001})
     assert response.status_code == 422
 
 
 def test_validation_contract_rejects_non_boolean_status(client: TestClient) -> None:
+    """FR-008, FR-009, NFR-003: Status input must be a boolean."""
     create_response = client.post("/tasks", json={"title": "Status validation"})
     task_id = create_response.json()["id"]
 
@@ -93,11 +102,13 @@ def test_validation_contract_rejects_non_boolean_status(client: TestClient) -> N
 
 
 def test_status_contract_returns_404_for_missing_task(client: TestClient) -> None:
+    """FR-010, NFR-005: A missing task returns the documented not-found response."""
     response = client.patch("/tasks/99999/status", json={"completed": True})
     assert response.status_code == 404
 
 
 def test_status_contract_sets_current_boolean_state(client: TestClient) -> None:
+    """FR-008, FR-011, NFR-002, NFR-005: Status setting updates current state."""
     created = client.post("/tasks", json={"title": "Status contract"})
     task_id = created.json()["id"]
 
@@ -108,6 +119,7 @@ def test_status_contract_sets_current_boolean_state(client: TestClient) -> None:
 
 
 def test_task_contract_accepts_maximum_field_lengths(client: TestClient) -> None:
+    """FR-009, FR-012, NFR-003: Maximum title and description lengths are accepted."""
     response = client.post("/tasks", json={"title": "t" * 100, "description": "d" * 1000})
 
     assert response.status_code == 201
@@ -116,6 +128,7 @@ def test_task_contract_accepts_maximum_field_lengths(client: TestClient) -> None
 
 
 def test_delete_contract_returns_204(client: TestClient) -> None:
+    """FR-007, FR-010, NFR-005: Delete has a no-content response."""
     create_response = client.post("/tasks", json={"title": "Delete contract"})
     task_id = create_response.json()["id"]
     response = client.delete(f"/tasks/{task_id}")

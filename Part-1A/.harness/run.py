@@ -1,4 +1,9 @@
-"""Part 1A harness. Usage: python .harness/run.py --label NAME   |   python .harness/run.py --lock"""
+"""Part 1A harness.
+
+Usage:
+    python .harness/run.py --label NAME
+    python .harness/run.py --lock
+"""
 from __future__ import annotations
 
 import argparse
@@ -21,7 +26,14 @@ FORBIDDEN = re.compile(r"#\s*(noqa|nosec)", re.IGNORECASE)
 
 
 def sh(cmd: list[str]) -> dict:
-    p = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    p = subprocess.run(
+        cmd,
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     return {"exit_code": p.returncode, "stdout": p.stdout[-6000:], "stderr": p.stderr[-3000:]}
 
 
@@ -89,7 +101,12 @@ def main() -> int:
     overall = all(g["passed"] for g in gates)
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     RESULTS.mkdir(parents=True, exist_ok=True)
-    report = {"label": args.label, "captured_at": stamp, "overall": "PASS" if overall else "FAIL", "gates": gates}
+    report = {
+        "label": args.label,
+        "captured_at": stamp,
+        "overall": "PASS" if overall else "FAIL",
+        "gates": gates,
+    }
     out = RESULTS / f"harness-{args.label}-{stamp}.json"
     out.write_text(json.dumps(report, indent=2), encoding="utf-8")
     for g in gates:

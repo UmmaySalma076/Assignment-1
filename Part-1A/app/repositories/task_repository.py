@@ -15,7 +15,13 @@ class TaskRepository:
         self.database_manager = database_manager
         self.id_generator = id_generator
 
-    def create_task(self, title: str, description: str | None, completed: bool = False, created_at: str | None = None) -> dict[str, Any]:
+    def create_task(
+        self,
+        title: str,
+        description: str | None,
+        completed: bool = False,
+        created_at: str | None = None,
+    ) -> dict[str, Any]:
         timestamp = created_at or self._current_timestamp()
         with self.database_manager.get_connection() as connection:
             if self.id_generator is None:

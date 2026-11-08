@@ -26,7 +26,10 @@ def create_task(
         )
         return created
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
 
 
 @router.get("/tasks", response_model=list[TaskResponse])
@@ -40,7 +43,10 @@ def list_tasks(service: Annotated[TaskService, Depends(get_task_service)]) -> li
 
 
 @router.get("/tasks/{task_id}", response_model=TaskResponse)
-def get_task(task_id: int, service: Annotated[TaskService, Depends(get_task_service)]) -> dict[str, Any]:
+def get_task(
+    task_id: int,
+    service: Annotated[TaskService, Depends(get_task_service)],
+) -> dict[str, Any]:
     try:
         return service.get_task(task_id)
     except TaskNotFoundError as exc:
@@ -63,7 +69,10 @@ def replace_task(
     except TaskNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
 
 
 @router.patch("/tasks/{task_id}", response_model=TaskResponse)
@@ -82,7 +91,10 @@ def update_task(
     except TaskNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
 
 
 @router.patch("/tasks/{task_id}/status", response_model=TaskResponse)
@@ -96,7 +108,10 @@ def update_task_status(
     except TaskNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
 
 
 @router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
