@@ -1,9 +1,15 @@
 <!--
 Sync Impact Report
-- Version change: N/A -> 1.0.0
-- Modified principles: N/A -> Smart Todo Application constitution
-- Added sections: Additional Constraints, Development Workflow, Governance
+- Version change: 1.0.0 -> 1.1.0 (MINOR: measurable quality gates and change-control requirements added)
+- Modified principles: none; all seven existing core principles are preserved
+- Added sections: none
 - Removed sections: none
+- Added requirements within existing sections:
+  - Fixed Ruff and Bandit acceptance commands and thresholds
+  - Minimum 85% application line coverage and complete pytest pass requirement
+  - Test traceability for every FR-xxx and NFR-xxx specification identifier
+  - Explicit prohibitions on weakening checks/tests, editing harness evidence, and committing secrets
+  - Spec Kit artifact workflow for genuine specification changes
 - Follow-up TODOs: none
 -->
 
@@ -38,6 +44,22 @@ The Smart Todo Application MUST be implemented using Python 3.13 and FastAPI. Th
 
 The application MUST preserve deterministic behavior, validation discipline, and security expectations throughout the development lifecycle. Implementation decisions MUST be justified by the documented requirements, and any change that affects user-visible behavior MUST be traceable to a requirement, contract, or failing test. The project MUST avoid broad speculative changes that do not directly support the approved specification.
 
+The following measurable quality gates are mandatory for implementation acceptance:
+
+1. `ruff check . --config .harness/ruff.toml` MUST exit with status 0 and report zero
+   violations. The implementation agent MUST NOT modify `.harness/ruff.toml`.
+2. `bandit -r app -ll` MUST report zero MEDIUM or HIGH severity issues.
+3. Every pytest test MUST pass, and line coverage for `app/` MUST be at least 85%.
+4. Every `FR-xxx` and `NFR-xxx` identifier in the active specification MUST appear in at
+   least one test. Review MUST verify this traceability rather than infer coverage from a
+   general passing test suite.
+5. The implementation agent MUST NOT add `# noqa` or `# nosec` suppressions; lower
+   coverage or lint thresholds; delete, skip, or weaken tests or acceptance criteria; edit
+   recorded harness results; or commit secrets or `.env` files.
+6. A genuine specification change MUST be processed through the applicable Spec Kit artifacts,
+   with the change recorded in those artifacts before implementation. Code or test changes MUST
+   NOT silently redefine the approved specification.
+
 ## Development Workflow
 
 The development workflow for this project MUST follow the Spec-Driven Development process and keep requirements, design, and implementation aligned.
@@ -49,6 +71,8 @@ The development workflow for this project MUST follow the Spec-Driven Developmen
 5. Security, determinism, and observability expectations MUST be checked as part of the validation flow, not deferred to a later cleanup stage.
 6. Any self-healing or recovery logic MUST use observed harness or runtime evidence, not guessed conditions.
 7. Final acceptance or rejection MUST remain a human decision informed by the evidence from tests, validation, and review.
+8. Before acceptance, the implementation MUST pass every quality gate in Additional Constraints. Validation evidence MUST include the exact commands, outcomes, test coverage, security findings, and FR/NFR-to-test traceability.
+9. A genuine change to a requirement MUST be recorded in the appropriate Spec Kit artifacts, such as the specification and affected plan, tasks, contracts, or test mapping. Implementation MUST follow the recorded change; implementation MUST NOT be used to silently alter scope.
 
 This workflow ensures that the project remains faithful to the assignment, traceable to requirements, and resistant to accidental regressions or policy drift.
 
@@ -60,6 +84,6 @@ Changes to the constitution MUST preserve the project's non-negotiable standards
 
 All implementation and review work MUST confirm compliance with this constitution before acceptance. Reviewers MUST verify that specification changes, test expectations, and implementation results remain aligned. Complexity must be justified by requirement or maintainability needs, not by convenience alone.
 
-The project MUST maintain a clear record of versioning, ratification, and amendment history. The constitution is a living governance document that exists to protect correctness, security, and maintainability through the life of the application.
+The project MUST maintain a clear record of versioning, ratification, and amendment history. The constitution is a living governance document that exists to protect correctness, security, and maintainability through the life of the application. Genuine specification changes MUST be recorded through the applicable Spec Kit artifacts and reviewed for consistency before implementation begins.
 
-**Version**: 1.0.0 | **Ratified**: 2026-11-08 | **Last Amended**: 2026-11-08
+**Version**: 1.1.0 | **Ratified**: 2026-11-08 | **Last Amended**: 2026-11-09

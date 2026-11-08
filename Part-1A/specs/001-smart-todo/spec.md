@@ -28,6 +28,8 @@ Users need a simple, reliable way to track tasks across their workday. The appli
 - Q: HTTP status code policy → A: DELETE returns 204 No Content; validation failures return 422 Unprocessable Entity.
 - Q: Maximum task field lengths → A: Title maximum is 100 characters; description maximum is 1000 characters.
 - Q: Task persistence strategy → A: Embedded SQLite database for persistent, deterministic task storage across restarts.
+- Q: Canonical task identifier in response objects → A: The response field is `id`, not `task_id`.
+- Q: Acceptance-criteria identification and traceability → A: On 2026-11-09, assign each acceptance criterion a unique AC-xxx ID, make its expected result binary and testable, and map it to the FR/NFR identifiers it verifies in an AC-to-FR/NFR traceability table.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -41,8 +43,9 @@ A user wants to add a new task and immediately confirm it appears in the task li
 
 **Acceptance Scenarios**:
 
-1. **Given** a valid task payload with a title, **When** the user creates the task, **Then** the task is stored and returned with a unique identifier, a status of pending, and a creation timestamp.
-2. **Given** an existing set of tasks, **When** the user requests all tasks, **Then** all current tasks are returned in a deterministic order and include the required metadata.
+1. **AC-001 — Create a task:** **Given** the request body `{"title":"Buy groceries","description":"Milk, bread, and eggs"}`, **When** the client sends `POST /tasks`, **Then** the response status is `201`; its JSON object has exactly the keys `id`, `title`, `description`, `completed`, and `created_at`; `title` equals `"Buy groceries"`; `description` equals `"Milk, bread, and eggs"`; `completed` equals `false`; `id` is an integer not used by any other stored task; and `created_at` is a valid ISO 8601 timestamp. Tests MUST control the generated ID and timestamp and assert their exact configured values; production IDs and timestamps remain runtime-generated. A subsequent `GET /tasks/{id}` returns status `200` and the same task values.
+2. **AC-002 — List tasks deterministically:** **Given** at least two stored tasks, **When** the client sends `GET /tasks`, **Then** the response status is `200`; the response is an array containing every stored task exactly once; and IDs appear in ascending numeric order. Each task object has exactly the keys `id`, `title`, `description`, `completed`, and `created_at`, with values equal to the stored task values.
+3. **AC-003 — List no tasks:** **Given** no stored tasks, **When** the client sends `GET /tasks`, **Then** the response status is `200` and the response body is exactly `[]`.
 
 ---
 
@@ -56,8 +59,8 @@ A user wants to inspect a single task and later change its content or status wit
 
 **Acceptance Scenarios**:
 
-1. **Given** a task exists in the system, **When** the user retrieves it by ID, **Then** the system returns the full task record with the expected fields and values.
-2. **Given** a task exists, **When** the user updates the title, description, or completion status, **Then** the stored task reflects the update and the response matches the new state.
+1. **AC-004 — Retrieve a task:** **Given** a stored task with ID `{id}`, **When** the client sends `GET /tasks/{id}`, **Then** the response status is `200` and the response JSON equals the stored task object, including its `id`, `title`, `description`, `completed`, and `created_at` values.
+2. **AC-005 — Update a task:** **Given** a stored task, **When** the client sends a valid `PUT /tasks/{id}` or `PATCH /tasks/{id}` changing the title, description, and/or completion status, **Then** the response status is `200`; every supplied field equals its requested value; omitted `PATCH` fields retain their prior values; `id` and `created_at` equal their pre-update values; and a subsequent `GET /tasks/{id}` returns the same updated task object.
 
 ---
 
@@ -71,11 +74,12 @@ A user wants to remove completed or unnecessary tasks and change a task between 
 
 **Acceptance Scenarios**:
 
-1. **Given** a pending task, **When** the user marks it as completed, **Then** the task status changes to completed and remains retrievable with the updated state.
-2. **Given** a completed task, **When** the user marks it as pending, **Then** the task status changes back to pending and the update is reflected consistently.
-3. **Given** the task is already completed, **When** the user repeats the same completed status update, **Then** the task remains completed and no completion history is created.
-4. **Given** the task is already pending, **When** the user repeats the same pending status update, **Then** the task remains pending and no completion history is created.
-5. **Given** a task exists, **When** the user deletes it, **Then** the task is removed and subsequent retrieval by ID fails with a not-found error.
+1. **AC-006 — Mark completed:** **Given** a pending task, **When** the client sends `PATCH /tasks/{id}/status` with `{"completed":true}`, **Then** the response status is `200`, the response field `completed` equals `true`, and a subsequent `GET /tasks/{id}` returns `completed` equal to `true`.
+2. **AC-007 — Mark pending:** **Given** a completed task, **When** the client sends `PATCH /tasks/{id}/status` with `{"completed":false}`, **Then** the response status is `200`, the response field `completed` equals `false`, and a subsequent `GET /tasks/{id}` returns `completed` equal to `false`.
+3. **AC-008 — Repeat completed state:** **Given** a completed task, **When** the client sends the same `{"completed":true}` status update again, **Then** the response status is `200`, the response field `completed` equals `true`, and the persistence schema contains no completion-history record for that task.
+4. **AC-009 — Repeat pending state:** **Given** a pending task, **When** the client sends the same `{"completed":false}` status update again, **Then** the response status is `200`, the response field `completed` equals `false`, and the persistence schema contains no completion-history record for that task.
+5. **AC-010 — Delete a task:** **Given** a stored task with ID `{id}`, **When** the client sends `DELETE /tasks/{id}`, **Then** the response status is `204` with an empty body, and a subsequent `GET /tasks/{id}` returns status `404`.
+6. **AC-011 — Persist tasks across restart:** **Given** a task has been stored in SQLite, **When** the application is restarted and the client sends `GET /tasks/{id}`, **Then** the response status is `200` and the returned task has the same `id`, `title`, `description`, `completed`, and `created_at` values as before restart.
 
 ---
 
@@ -89,8 +93,9 @@ A user or client may provide invalid task data or request a task that does not e
 
 **Acceptance Scenarios**:
 
-1. **Given** a task payload with an empty or invalid title, **When** the user creates or updates the task, **Then** the request is rejected with a validation error describing the issue.
-2. **Given** no task exists for a requested ID, **When** the user requests the task or attempts an update or delete, **Then** the system returns a clearly defined not-found response.
+1. **AC-012 — Reject invalid task data:** **Given** a create request with a missing, empty, or whitespace-only title; a create or update request with a title longer than `100` characters or description longer than `1000` characters; or an update or status-update request with a non-boolean completion value, **When** the client submits the request, **Then** the response status is `422` and the affected stored task data is unchanged (or, for create, no task is added).
+2. **AC-013 — Report a missing task:** **Given** no task exists for ID `99999`, **When** the client sends `GET /tasks/99999`, `PUT /tasks/99999` or `PATCH /tasks/99999` with a valid update body, `PATCH /tasks/99999/status` with `{"completed":true}`, or `DELETE /tasks/99999`, **Then** each response status is `404` and no task is created or modified.
+3. **AC-014 — Enforce field-length boundaries:** **Given** a create request with a `100`-character title and a `1000`-character description, **When** the client sends `POST /tasks`, **Then** the response status is `201` and both returned strings exactly equal the submitted strings. A create request with a `101`-character title or `1001`-character description returns status `422`.
 
 ### Edge Cases
 
@@ -103,6 +108,25 @@ A user or client may provide invalid task data or request a task that does not e
 - A task is deleted and then requested again.
 - A task list is empty at the start of a session.
 - The system must preserve a deterministic ordering when multiple tasks exist.
+
+**Acceptance Criteria Traceability (AC → FR/NFR)**
+
+| Acceptance criterion | Functional requirements verified | Non-functional requirements verified |
+|---|---|---|
+| AC-001 | FR-001, FR-002, FR-003, FR-012, FR-013 | NFR-001, NFR-002, NFR-005, NFR-006 |
+| AC-002 | FR-004, FR-012, FR-013 | NFR-002, NFR-004 |
+| AC-003 | FR-004 | NFR-002, NFR-004 |
+| AC-004 | FR-005, FR-012 | NFR-005 |
+| AC-005 | FR-006, FR-011, FR-012 | NFR-001, NFR-003, NFR-005 |
+| AC-006 | FR-008, FR-011 | NFR-002, NFR-005 |
+| AC-007 | FR-008, FR-011 | NFR-002, NFR-005 |
+| AC-008 | FR-008, FR-011, FR-013 | NFR-002 |
+| AC-009 | FR-008, FR-011, FR-013 | NFR-002 |
+| AC-010 | FR-007, FR-010 | NFR-005 |
+| AC-011 | FR-002, FR-003, FR-012, FR-014 | NFR-001, NFR-007 |
+| AC-012 | FR-009 | NFR-003, NFR-005 |
+| AC-013 | FR-010 | NFR-005 |
+| AC-014 | FR-009, FR-012 | NFR-003, NFR-005 |
 
 ## Requirements *(mandatory)*
 
@@ -132,7 +156,7 @@ The application MUST expose the following HTTP task operations for the task reso
   - Request body MUST include a non-empty title and may include a description.
   - Response MUST be 201 Created with the full created task object.
   - Validation failures MUST return 422 Unprocessable Entity.
-  - Response task object MUST include: task_id, title, description, completed, created_at.
+  - Response task object MUST include: id, title, description, completed, created_at.
 
 - **GET /tasks**
   - Returns all tasks in a deterministic order.
@@ -199,7 +223,7 @@ The application MUST expose the following HTTP task operations for the task reso
 
 ### Key Entities
 
-- **Task**: Represents a single user-managed unit of work. Required attributes: unique task ID, title, optional description, completion status, and creation timestamp.
+- **Task**: Represents a single user-managed unit of work. Required attributes: unique task ID (exposed as `id` in API responses), title, optional description, completion status, and creation timestamp.
 - **Task Collection**: Represents the set of all persisted tasks and supports retrieval of all tasks and filtering by individual task ID.
 
 ## Success Criteria *(mandatory)*
