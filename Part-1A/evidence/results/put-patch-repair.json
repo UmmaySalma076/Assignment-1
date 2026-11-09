@@ -1,0 +1,11 @@
+{
+  "failure_evidence": "evidence/results/put-patch-test-first-baseline.txt",
+  "expected": "PUT resets omitted description to empty string and completed to false; PATCH retains every omitted field.",
+  "observed": "PUT returned the stored description instead of the required empty string. The corrected PATCH test passed.",
+  "change": "Preserve an explicitly supplied empty description in TaskService.update_task; use a replacement schema with required title and replacement defaults, and use exclude_unset for PATCH updates.",
+  "revalidation": {
+    "command": "python -m pytest -q tests/contract/test_task_api_contract.py::test_put_replaces_omitted_optional_fields_with_defaults tests/contract/test_task_api_contract.py::test_patch_retains_omitted_fields tests/contract/test_task_api_contract.py::test_get_and_update_task_contract tests/integration/test_task_lifecycle.py::test_sqlite_persists_tasks_across_manager_restart tests/integration/test_task_lifecycle.py::test_list_1000_tasks_within_response_time tests/integration/test_task_lifecycle.py::test_update_task_status_is_idempotent",
+    "report": "evidence/results/put-patch-test-rerun.txt",
+    "result": "6 passed."
+  }
+}

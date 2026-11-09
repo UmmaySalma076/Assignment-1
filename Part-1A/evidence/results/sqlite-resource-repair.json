@@ -1,0 +1,18 @@
+{
+  "issue": "SQLite connections were not closed during application shutdown or test fixture teardown.",
+  "failure_evidence": "evidence/results/harness-run8-initial-20261108T212115Z.json",
+  "reproduction": {
+    "test": "tests/integration/test_database_lifecycle.py::test_application_shutdown_closes_database_connection",
+    "report": "evidence/results/sqlite-resource-warning-baseline.txt",
+    "result": "1 failed because DatabaseManager.close() was not called at application shutdown."
+  },
+  "changes": [
+    "Added FastAPI lifespan initialization and guaranteed DatabaseManager.close() during shutdown.",
+    "Added deterministic DatabaseManager.close() cleanup to the db_manager pytest fixture."
+  ],
+  "revalidation": {
+    "command": "python -W always::ResourceWarning -X tracemalloc=5 -m pytest -q tests/integration/test_database_lifecycle.py tests/integration/test_task_lifecycle.py::test_delete_and_missing_task_errors",
+    "report": "evidence/results/sqlite-resource-repair-tests-rerun.txt",
+    "result": "2 passed; no SQLite ResourceWarning was emitted."
+  }
+}

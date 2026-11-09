@@ -1,0 +1,88 @@
+............F.........FF.                                                [100%]
+================================== FAILURES ===================================
+____________ test_ruff_exclusion_of_active_source_fails_guardrails ____________
+
+workspace = {'root': WindowsPath('C:/Users/Admin/AppData/Local/Temp/pytest-of-Admin/pytest-37/test_ruff_exclusion_of_active_0'), '...ess/ruff.toml', 'pyproject.toml', 'specs/001-smart-todo/spec.md', 'specs/001-smart-todo/tasks.md', 'app/main.py', ...]}
+
+    def test_ruff_exclusion_of_active_source_fails_guardrails(
+        workspace: dict[str, Any],
+    ) -> None:
+        config = workspace["root"] / ".harness/ruff.toml"
+        config.write_text('line-length = 100\nextend-exclude = ["app/**"]\n', encoding="utf-8")
+    
+>       assert any("Ruff excludes active source" in problem for problem in problems(workspace))
+E       assert False
+E        +  where False = any(<generator object test_ruff_exclusion_of_active_source_fails_guardrails.<locals>.<genexpr> at 0x0000016B2C7F2670>)
+
+tests\harness\test_guardrails.py:156: AssertionError
+____________ test_tracked_evidence_files_are_in_protected_manifest ____________
+
+workspace = {'root': WindowsPath('C:/Users/Admin/AppData/Local/Temp/pytest-of-Admin/pytest-37/test_tracked_evidence_files_ar0'), '...ess/ruff.toml', 'pyproject.toml', 'specs/001-smart-todo/spec.md', 'specs/001-smart-todo/tasks.md', 'app/main.py', ...]}
+
+    def test_tracked_evidence_files_are_in_protected_manifest(
+        workspace: dict[str, Any],
+    ) -> None:
+        manifest = json.loads(HARNESS.LOCK.read_text(encoding="utf-8"))
+    
+        assert "evidence/results/historical.json" in manifest["files"]
+>       assert "evidence/final-generation/old.zip" in manifest["files"]
+E       AssertionError: assert 'evidence/final-generation/old.zip' in {'.harness/ruff.toml': '776b9295361b706ededf021d3b6b6cdffa0d78e50002d6b24ef0ca6ba0b2e308', '.harness/run.py': 'df808fa...dfe6ae900dd9', 'specs/001-smart-todo/spec.md': 'd4a4c7a84cc874c6fa4e1d04663606f2ed37cef37408dafe4e5d3d0d336eab09', ...}
+
+tests\harness\test_guardrails.py:219: AssertionError
+_____________ test_git_paths_are_normalized_from_repository_root ______________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000016B2C7A32A0>
+
+    def test_git_paths_are_normalized_from_repository_root(
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        def fake_git_output(*args: str) -> subprocess.CompletedProcess[str]:
+            if args[:2] == ("rev-parse", "--show-prefix"):
+                return subprocess.CompletedProcess(args, 0, "Part-1A/\n", "")
+            if args and args[0] == "ls-files":
+                assert "--full-name" in args
+                return subprocess.CompletedProcess(
+                    args,
+                    0,
+                    "Part-1A/evidence/results/human-review.json\0"
+                    "Part-1A/app/main.py\0",
+                    "",
+                )
+            raise AssertionError(f"Unexpected Git command: {args}")
+    
+        monkeypatch.setattr(HARNESS, "git_output", fake_git_output)
+    
+>       assert HARNESS.project_relative_git_paths() == [
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            "evidence/results/human-review.json",
+            "app/main.py",
+        ]
+
+tests\harness\test_guardrails.py:241: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.harness\run.py:106: in project_relative_git_paths
+    tracked = git_output("ls-files", "-z")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+args = ('ls-files', '-z')
+
+    def fake_git_output(*args: str) -> subprocess.CompletedProcess[str]:
+        if args[:2] == ("rev-parse", "--show-prefix"):
+            return subprocess.CompletedProcess(args, 0, "Part-1A/\n", "")
+        if args and args[0] == "ls-files":
+>           assert "--full-name" in args
+E           AssertionError: assert '--full-name' in ('ls-files', '-z')
+
+tests\harness\test_guardrails.py:229: AssertionError
+============================== warnings summary ===============================
+.venv\Lib\site-packages\fastapi\testclient.py:1
+  C:\Users\Admin\Projects\Assignment-1\Part-1A\.venv\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/harness/test_guardrails.py::test_ruff_exclusion_of_active_source_fails_guardrails
+FAILED tests/harness/test_guardrails.py::test_tracked_evidence_files_are_in_protected_manifest
+FAILED tests/harness/test_guardrails.py::test_git_paths_are_normalized_from_repository_root
+3 failed, 22 passed, 1 warning in 6.06s

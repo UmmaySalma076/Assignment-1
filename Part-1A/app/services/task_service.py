@@ -47,7 +47,7 @@ class TaskService:
         if title is not None:
             title = validate_title(title)
         if description is not None:
-            description = validate_description(description)
+            description = "" if description == "" else validate_description(description)
         if completed is not None:
             completed = validate_completed(completed)
 

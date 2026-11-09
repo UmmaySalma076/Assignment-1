@@ -66,6 +66,7 @@ def test_get_and_update_task_contract(client: TestClient) -> None:
     """FR-005, FR-006, FR-011, FR-012, NFR-002, NFR-005: Read and update contract."""
     create_response = client.post("/tasks", json={"title": "Original", "description": "Initial"})
     task_id = create_response.json()["id"]
+    created_at = create_response.json()["created_at"]
 
     get_response = client.get(f"/tasks/{task_id}")
     put_response = client.put(
@@ -82,7 +83,58 @@ def test_get_and_update_task_contract(client: TestClient) -> None:
     assert put_response.json()["completed"] is True
     assert patch_response.status_code == 200
     assert patch_response.json()["title"] == "Patched"
+    assert patch_response.json()["description"] == "New description"
     assert patch_response.json()["completed"] is True
+    assert patch_response.json()["id"] == task_id
+    assert patch_response.json()["created_at"] == created_at
+
+
+def test_put_replaces_omitted_optional_fields_with_defaults(client: TestClient) -> None:
+    """FR-006, FR-012, NFR-002: PUT resets omitted fields and preserves metadata."""
+    created = client.post(
+        "/tasks",
+        json={"title": "Before replacement", "description": "Remove this"},
+    ).json()
+    status_response = client.patch(
+        f"/tasks/{created['id']}/status",
+        json={"completed": True},
+    )
+    assert status_response.status_code == 200
+
+    response = client.put(f"/tasks/{created['id']}", json={"title": "After replacement"})
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": created["id"],
+        "title": "After replacement",
+        "description": "",
+        "completed": False,
+        "created_at": created["created_at"],
+    }
+
+
+def test_patch_retains_omitted_fields(client: TestClient) -> None:
+    """FR-006, FR-012, NFR-002: PATCH changes only supplied fields."""
+    created = client.post(
+        "/tasks",
+        json={"title": "Before patch", "description": "Keep this"},
+    ).json()
+    status_response = client.patch(
+        f"/tasks/{created['id']}/status",
+        json={"completed": True},
+    )
+    assert status_response.status_code == 200
+
+    response = client.patch(f"/tasks/{created['id']}", json={"title": "After patch"})
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": created["id"],
+        "title": "After patch",
+        "description": "Keep this",
+        "completed": True,
+        "created_at": created["created_at"],
+    }
 
 
 def test_validation_contract_rejects_invalid_task_data(client: TestClient) -> None:

@@ -1,0 +1,51 @@
+{
+  "label": "guardrails-final",
+  "captured_at": "20261109T200226Z",
+  "overall": "PASS",
+  "gates": [
+    {
+      "gate": "syntax",
+      "passed": true,
+      "command": "-m compileall -q app tests",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "gate": "lint",
+      "passed": true,
+      "command": "-m ruff check . --config .harness/ruff.toml",
+      "exit_code": 0,
+      "stdout": "All checks passed!\n",
+      "stderr": ""
+    },
+    {
+      "gate": "security",
+      "passed": true,
+      "command": "-m bandit -r app -ll -q",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "gate": "tests+coverage",
+      "passed": true,
+      "command": "-m pytest -q --cov=app --cov-fail-under=85",
+      "exit_code": 0,
+      "stdout": "........................................................................ [ 90%]\n........                                                                 [100%]\n============================== warnings summary ===============================\n.venv\\Lib\\site-packages\\fastapi\\testclient.py:1\n  C:\\Users\\Admin\\Projects\\Assignment-1\\Part-1A\\.venv\\Lib\\site-packages\\fastapi\\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=============================== tests coverage ================================\n_______________ coverage: platform win32, python 3.13.1-final-0 _______________\n\nName                                  Stmts   Miss  Cover\n---------------------------------------------------------\napp\\__init__.py                           0      0   100%\napp\\api\\__init__.py                       0      0   100%\napp\\api\\deps.py                           6      3    50%\napp\\api\\routes.py                        61     13    79%\napp\\config.py                             6      0   100%\napp\\database.py                          33      1    97%\napp\\logging.py                           13      0   100%\napp\\main.py                              22      0   100%\napp\\models\\__init__.py                    0      0   100%\napp\\models\\task.py                        8      8     0%\napp\\repositories\\__init__.py              0      0   100%\napp\\repositories\\task_repository.py      47      1    98%\napp\\schemas\\__init__.py                   0      0   100%\napp\\schemas\\task.py                      74     14    81%\napp\\services\\__init__.py                  0      0   100%\napp\\services\\task_service.py             46      2    96%\napp\\utils\\__init__.py                     0      0   100%\napp\\utils\\validation.py                  24      4    83%\n---------------------------------------------------------\nTOTAL                                   340     46    86%\nRequired test coverage of 85% reached. Total coverage: 86.47%\n80 passed, 1 warning in 4.91s\n",
+      "stderr": ""
+    },
+    {
+      "gate": "traceability",
+      "passed": true,
+      "expected": "every spec ID appears in tests (21 IDs)",
+      "observed": "all IDs referenced"
+    },
+    {
+      "gate": "guardrails",
+      "passed": true,
+      "expected": "no suppression/skip markers; unchanged tests/spec/config; unchanged recorded results; no tracked secrets/.env; required gate thresholds",
+      "observed": "ok"
+    }
+  ]
+}

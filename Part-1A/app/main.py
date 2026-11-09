@@ -1,4 +1,6 @@
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 
@@ -9,9 +11,17 @@ from app.logging import configure_logging
 configure_logging()
 logger = logging.getLogger(__name__)
 
-database_manager.initialize()
 
-app = FastAPI(title="Smart Todo Application")
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    try:
+        database_manager.initialize()
+        yield
+    finally:
+        database_manager.close()
+
+
+app = FastAPI(title="Smart Todo Application", lifespan=lifespan)
 app.include_router(router)
 
 

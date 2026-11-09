@@ -1,0 +1,51 @@
+{
+  "label": "run10-final",
+  "captured_at": "20261109T192958Z",
+  "overall": "FAIL",
+  "gates": [
+    {
+      "gate": "syntax",
+      "passed": true,
+      "command": "-m compileall -q app tests",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "gate": "lint",
+      "passed": true,
+      "command": "-m ruff check . --config .harness/ruff.toml",
+      "exit_code": 0,
+      "stdout": "All checks passed!\n",
+      "stderr": ""
+    },
+    {
+      "gate": "security",
+      "passed": true,
+      "command": "-m bandit -r app -ll -q",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "gate": "tests+coverage",
+      "passed": false,
+      "command": "-m pytest -q --cov=app --cov-fail-under=85",
+      "exit_code": 4,
+      "stdout": "",
+      "stderr": "ERROR: usage: python -m pytest [options] [file_or_dir] [file_or_dir] [...]\npython -m pytest: error: unrecognized arguments: --cov=app --cov-fail-under=85\n  inifile: C:\\Users\\Admin\\Projects\\Assignment-1\\Part-1A\\pyproject.toml\n  rootdir: C:\\Users\\Admin\\Projects\\Assignment-1\\Part-1A\n\n"
+    },
+    {
+      "gate": "traceability",
+      "passed": true,
+      "expected": "every spec ID appears in tests (21 IDs)",
+      "observed": "all IDs referenced"
+    },
+    {
+      "gate": "guardrails",
+      "passed": true,
+      "expected": "no suppression/skip markers; unchanged tests/spec/config; unchanged recorded results; no tracked secrets/.env; required gate thresholds",
+      "observed": "ok"
+    }
+  ]
+}

@@ -16,7 +16,10 @@ def temp_db_path(tmp_path: Path) -> Path:
 def db_manager(temp_db_path: Path) -> DatabaseManager:
     manager = DatabaseManager(database_path=str(temp_db_path))
     manager.initialize()
-    return manager
+    try:
+        yield manager
+    finally:
+        manager.close()
 
 
 @pytest.fixture

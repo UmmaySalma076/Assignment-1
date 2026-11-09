@@ -6,7 +6,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import get_task_service
-from app.schemas.task import TaskCreate, TaskResponse, TaskStatusUpdate, TaskUpdate
+from app.schemas.task import TaskCreate, TaskReplace, TaskResponse, TaskStatusUpdate, TaskUpdate
 from app.services.task_service import TaskNotFoundError, TaskService
 
 router = APIRouter()
@@ -56,7 +56,7 @@ def get_task(
 @router.put("/tasks/{task_id}", response_model=TaskResponse)
 def replace_task(
     task_id: int,
-    payload: TaskUpdate,
+    payload: TaskReplace,
     service: Annotated[TaskService, Depends(get_task_service)],
 ) -> dict[str, Any]:
     try:
@@ -82,11 +82,12 @@ def update_task(
     service: Annotated[TaskService, Depends(get_task_service)],
 ) -> dict[str, Any]:
     try:
+        changes = payload.model_dump(exclude_unset=True)
+        if changes.get("description") is None and "description" in changes:
+            changes["description"] = ""
         return service.update_task(
             task_id,
-            title=payload.title,
-            description=payload.description,
-            completed=payload.completed,
+            **changes,
         )
     except TaskNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc

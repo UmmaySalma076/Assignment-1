@@ -1,0 +1,21 @@
+{
+  "snapshot": "evidence/final-generation/final-code-harness-v2-run11-20261109T1931Z.zip",
+  "snapshot_sha256": "13e6a713bf8078b0acf450c7a0011a8d0fc67e6de717aee12e9d215b61e157ff",
+  "validation_report": "evidence/results/harness-run11-final-20261109T193118Z.json",
+  "validation_report_sha256": "3e566f75ce2237be4aaed3832cceb6e2c7da9fa9e90f1449ca232b1c6b8bcf1d",
+  "validation": {
+    "overall": "PASS",
+    "tests_passed": 33,
+    "app_line_coverage_percent": 86.47,
+    "coverage_threshold_percent": 85,
+    "gates_passed": [
+      "syntax",
+      "lint",
+      "security",
+      "tests+coverage",
+      "traceability",
+      "guardrails"
+    ]
+  },
+  "included_files": 33
+}
