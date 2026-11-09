@@ -3,6 +3,8 @@
   "snapshot_sha256": "d2e2080aeedfae50d95a018640bd06be1b077f294f4a965c704ce40c7c95a561",
   "validation_report": "evidence/results/harness-guardrails-final-20261109T200226Z.json",
   "validation_report_sha256": "d484dd394b85aa3613f0d57880ad520abb3eea3464f0c97b98200ce466e9f53f",
+  "validation_report_sha256_basis": "SHA-256 of the exact report bytes in the Windows working tree (CRLF line endings).",
+  "validation_report_sha256_lf_normalized": "e81ddebd3fbec14481941e0cb242fa69e2d2d9721282a50c21c3f73bd6894a0c",
   "validation": {
     "overall": "PASS",
     "tests_passed": 80,
