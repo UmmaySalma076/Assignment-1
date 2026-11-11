@@ -1,0 +1,334 @@
+openapi: 3.1.0
+info:
+  title: Natural-Language Reminder Agent
+  version: 1.0.0
+  description: >
+    Local-model reminder interpretation only, using the pinned local Ollama
+    tag tinyllama:1.1b-chat-v0.6-q4_0. Evaluation records the actual Ollama
+    model digest when available and the effective generation settings. No
+    paid model API is used. This API does not persist or deliver reminders.
+    Model outcomes are proposals, not confirmation of a stored or scheduled
+    reminder.
+servers:
+  - url: http://127.0.0.1:8000
+paths:
+  /v1/reminders/interpret:
+    post:
+      operationId: interpretReminder
+      summary: Interpret a natural-language reminder request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InterpretRequest"
+      responses:
+        "200":
+          description: A validated reminder proposal, clarification, or refusal.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelOutcome"
+        "400":
+          description: >
+            Invalid request. Text longer than configured MAX_REQUEST_CHARS
+            (default 2000; maximum 2000 Unicode code points) returns
+            INVALID_REQUEST and is rejected without truncation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceError"
+        "500":
+          description: Unexpected sanitized service failure.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceError"
+        "502":
+          description: >
+            Ollama returned malformed output or an outcome violating a
+            deterministic invariant. A clarification is returned as 200 only
+            when missing or ambiguous user input justifies it and its response
+            passes schema and consistency validation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceError"
+        "503":
+          description: Local Ollama is unavailable or not configured.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceError"
+        "504":
+          description: Ollama did not respond before the configured timeout.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceError"
+  /health/live:
+    get:
+      operationId: liveness
+      summary: Check process liveness without calling the model.
+      responses:
+        "200":
+          description: Process is alive.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    const: alive
+  /health/ready:
+    get:
+      operationId: readiness
+      summary: Check local Ollama reachability without generation.
+      responses:
+        "200":
+          description: Local inference dependency is reachable.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    const: ready
+        "503":
+          description: Local Ollama is not reachable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceError"
+components:
+  schemas:
+    InterpretRequest:
+      type: object
+      additionalProperties: false
+      required: [text]
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: >
+            Untrusted natural-language request. Runtime MAX_REQUEST_CHARS
+            defaults to 2000 Unicode code points and may be lowered, but not
+            raised above this schema maximum.
+        timezone:
+          type: [string, "null"]
+          description: Optional trusted IANA timezone identifier.
+        reference_time:
+          type: [string, "null"]
+          format: date-time
+          description: >
+            Controlled evaluation context only. Production requests containing
+            this field are rejected.
+        reminder_context:
+          type: array
+          default: []
+          items:
+            $ref: "#/components/schemas/ReminderReference"
+    ReminderReference:
+      type: object
+      additionalProperties: false
+      required: [reference, subject]
+      properties:
+        reference:
+          type: string
+          minLength: 1
+        subject:
+          type: string
+          minLength: 1
+        due_at:
+          type: [string, "null"]
+          format: date-time
+        timezone:
+          type: [string, "null"]
+        recurrence:
+          oneOf:
+            - $ref: "#/components/schemas/Recurrence"
+            - type: "null"
+          description: Optional trusted existing recurrence schedule.
+    ModelOutcome:
+      description: >
+        Exactly one validated reminder, clarification, or refusal. A
+        clarification is valid only when request/context validation supports
+        its cited missing or ambiguous user detail.
+      oneOf:
+        - $ref: "#/components/schemas/ReminderResponse"
+        - $ref: "#/components/schemas/ClarificationResponse"
+        - $ref: "#/components/schemas/RefusalResponse"
+      discriminator:
+        propertyName: outcome
+    ReminderResponse:
+      type: object
+      additionalProperties: false
+      required: [outcome, actions]
+      properties:
+        outcome:
+          const: reminder
+        actions:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/ReminderAction"
+    ReminderAction:
+      type: object
+      description: >
+        Create requires a null target_reference; reschedule and snooze require
+        a unique target_reference in reminder_context. Snooze recurrence must
+        be null. These cross-field constraints are enforced by Pydantic and
+        deterministic domain validation.
+      additionalProperties: false
+      required:
+        - intent
+        - subject
+        - due_at
+        - timezone
+        - recurrence
+        - target_reference
+      properties:
+        intent:
+          type: string
+          enum: [create, reschedule, snooze]
+        subject:
+          type: string
+          minLength: 1
+        due_at:
+          type: string
+          format: date-time
+          description: RFC 3339 date-time including a valid UTC offset.
+        timezone:
+          type: string
+          description: Explicit IANA timezone identifier.
+        recurrence:
+          oneOf:
+            - $ref: "#/components/schemas/Recurrence"
+            - type: "null"
+        target_reference:
+          type: [string, "null"]
+          description: Null for create; required and unique for reschedule/snooze.
+    Recurrence:
+      type: object
+      description: >
+        Selectors are conditional on frequency: weekly requires weekdays,
+        monthly requires day_of_month, yearly requires month and day.
+        Frequency-inapplicable selectors must be null. A monthly selected day
+        absent in a month is skipped; February 29 yearly schedules occur only
+        in leap years.
+      additionalProperties: false
+      required:
+        - frequency
+        - interval
+        - weekdays
+        - day_of_month
+        - month
+        - day
+        - timezone
+        - end_condition
+      properties:
+        frequency:
+          type: string
+          enum: [daily, weekly, monthly, yearly]
+        interval:
+          type: integer
+          minimum: 1
+        weekdays:
+          type: [array, "null"]
+          uniqueItems: true
+          items:
+            type: string
+            enum: [MO, TU, WE, TH, FR, SA, SU]
+        day_of_month:
+          type: [integer, "null"]
+          minimum: 1
+          maximum: 31
+        month:
+          type: [integer, "null"]
+          minimum: 1
+          maximum: 12
+        day:
+          type: [integer, "null"]
+          minimum: 1
+          maximum: 31
+        timezone:
+          type: string
+        end_condition:
+          oneOf:
+            - $ref: "#/components/schemas/RecurrenceEnd"
+            - type: "null"
+    RecurrenceEnd:
+      type: object
+      description: >
+        A finite recurrence must specify exactly one selector. until is an
+        inclusive local date in the recurrence timezone and must not precede
+        its first occurrence. occurrences is a positive total count including
+        the first occurrence. A null end_condition is allowed only for an
+        explicitly indefinite recurrence. The service validates these rules
+        against the first scheduled occurrence.
+      additionalProperties: false
+      minProperties: 1
+      maxProperties: 1
+      oneOf:
+        - required: [until]
+        - required: [occurrences]
+      properties:
+        until:
+          type: string
+          format: date
+        occurrences:
+          type: integer
+          minimum: 1
+    ClarificationResponse:
+      type: object
+      additionalProperties: false
+      required: [outcome, question, unresolved_fields]
+      properties:
+        outcome:
+          const: clarification
+        question:
+          type: string
+          minLength: 1
+        unresolved_fields:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            minLength: 1
+    RefusalResponse:
+      type: object
+      additionalProperties: false
+      required: [outcome, category, message]
+      properties:
+        outcome:
+          const: refusal
+        category:
+          type: string
+          minLength: 1
+        message:
+          type: string
+          minLength: 1
+    ServiceError:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum:
+                - INVALID_REQUEST
+                - INVALID_MODEL_OUTPUT
+                - OLLAMA_UNAVAILABLE
+                - OLLAMA_TIMEOUT
+                - INTERNAL_ERROR
+            message:
+              type: string
+              minLength: 1

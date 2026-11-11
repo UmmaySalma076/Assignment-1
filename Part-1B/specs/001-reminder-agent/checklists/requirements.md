@@ -21,10 +21,12 @@
 - [x] Edge cases are identified.
 - [x] Scope is clearly bounded.
 - [x] Dependencies and assumptions identified.
+- [x] Configurable request-length limit, rejection behavior, and validation error are explicit.
 
 ## Feature Readiness
 
 - [x] All functional requirements have clear evaluation or service-check traceability.
+- [x] Request-length requirement FR-024 is linked to conformance gate G06 and configuration/API validation tests.
 - [x] User scenarios cover primary flows.
 - [x] Feature meets measurable outcomes defined in Success Criteria, subject to future implementation and evaluation.
 - [x] No unnecessary implementation details leak into specification.

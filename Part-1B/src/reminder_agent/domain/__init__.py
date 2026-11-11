@@ -1,0 +1,1 @@
+"""Deterministic reminder domain rules."""

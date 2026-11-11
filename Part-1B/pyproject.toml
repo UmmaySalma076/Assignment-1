@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools==75.6.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "local-reminder-agent"
+version = "0.1.0"
+description = "Local Ollama-powered reminder interpretation API"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+  "fastapi==0.115.6",
+  "httpx==0.28.1",
+  "pydantic==2.10.4",
+  "tzdata==2025.1",
+  "uvicorn==0.34.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "hypothesis==6.122.3",
+  "pytest==8.3.4",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

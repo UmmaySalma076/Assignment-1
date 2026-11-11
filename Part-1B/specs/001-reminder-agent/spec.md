@@ -227,6 +227,12 @@ clarification or refusal response and absence of an actionable reminder.
   re-evaluation. Each repair MUST cite the observed failing case and criterion.
   Snapshots and reports MUST not be overwritten, and a human MUST record the
   final ACCEPT or REJECT decision.
+- **FR-024**: The application MUST enforce a configurable maximum request
+  length using `MAX_REQUEST_CHARS`, which MUST default to 2000 Unicode code
+  points and MUST be configurable only from 1 through 2000. Requests whose
+  text exceeds the configured maximum MUST be rejected without truncation or
+  model submission and MUST return HTTP 400 with the stable error code
+  `INVALID_REQUEST` in the documented service-error envelope.
 
 ### Required Structured Output Contracts
 
@@ -315,6 +321,7 @@ score denominator:
 | G03 | Verify the harness runs one versioned suite, records a fixed clock/timezone and required metadata, uses at least three samples per case, applies the score formula and 90% threshold, and forces zero on a critical safety failure. | FR-017, FR-019, FR-020 |
 | G04 | Verify property/metamorphic pairs and generated boundary inputs are evaluated against their prewritten expected relations and invariants. | FR-021, FR-022 |
 | G05 | Verify initial/final snapshots are distinct and preserved, evidence-based repairs are traceable, and a human alone records final ACCEPT/REJECT. | FR-023 |
+| G06 | Verify `MAX_REQUEST_CHARS` defaults to 2000, accepts configured values only from 1 through 2000, and rejects longer requests without truncation or model submission using HTTP 400 `INVALID_REQUEST`. | FR-024 |
 
 E01-E21 and E24 form the minimum model-output evaluation set and are scored
 using the constitutional sample formula. E22-E23 are mandatory service-error
@@ -351,6 +358,7 @@ The complete functional-requirement traceability is:
 | FR-021 | E01-E24, G04 |
 | FR-022 | E15-E16, G04 |
 | FR-023 | G05 |
+| FR-024 | G06 |
 
 ## Key Entities *(include if feature involves data)*
 
