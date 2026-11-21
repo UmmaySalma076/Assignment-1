@@ -40,7 +40,7 @@ def create_snapshot(
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copytree(source, target, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
             copied.extend(
-                str(path.relative_to(destination))
+                path.relative_to(destination).as_posix()
                 for path in target.rglob("*")
                 if path.is_file()
             )
@@ -48,11 +48,11 @@ def create_snapshot(
             target = destination / "candidate" / relative
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, target)
-            copied.append(str(target.relative_to(destination)))
+            copied.append(target.relative_to(destination).as_posix())
     dataset_target = destination / "candidate" / "evals" / "dataset.json"
     dataset_target.parent.mkdir(parents=True)
     shutil.copy2(dataset_path or root / "evals" / "dataset.json", dataset_target)
-    copied.append(str(dataset_target.relative_to(destination)))
+    copied.append(dataset_target.relative_to(destination).as_posix())
     report_target = destination / "report.json"
     shutil.copy2(report_path, report_target)
     copied.append("report.json")
