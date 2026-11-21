@@ -61,12 +61,24 @@ The separate G06 gate checks that malformed and oversized requests get
 - [Initial generation evidence](evidence/initial-generation/)
 - [Final generation evidence](evidence/final-generation/)
 - [Recorded model and runtime settings](evidence/runtime-config.json)
+- [Verified repair references](evidence/repair-links.json)
+- [Offline tests and line coverage](evidence/results/grounded-pytest-coverage.txt)
 - [Recurrence and relative-time regression evidence](evidence/results/)
 
-The initial live run evaluates the original application with the repaired
-harness. The final run evaluates the revised application and prompt against
-the same cases. Both reports record an automated FAIL. Each archived run
-contains a report, a manifest, and a ZIP containing the evaluated candidate.
+The latest live evaluation passed all 72 samples and all required gates. The
+earlier failed runs are archived alongside the repaired run. Each archive has
+a report, a manifest, and a ZIP of the evaluated candidate.
+
+The repaired app derives explicit scheduling facts from the request and trusted
+context. Ollama generates the full response under those constraints. It selects
+focused wording for clarification and refusal, and the app supports general
+model proposals for phrasing it cannot fully ground. Every model response is
+validated before the app returns it.
+
+The current safety cases exercise the deployed request guard and refusal-only
+model generation. Earlier reports include a separate raw-model probe. The
+dataset, scoring criteria, sample count, and threshold are fixed across the
+runs. The current result measures the guarded application.
 
 Write your own observations and ACCEPT or REJECT decision in
 `evidence/harness-log.md` after reviewing the reports, repairs, remaining
