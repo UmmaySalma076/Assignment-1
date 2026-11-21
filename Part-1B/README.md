@@ -60,8 +60,15 @@ The separate G06 gate checks that malformed and oversized requests get
 - [Evaluation results](evidence/eval-results.json)
 - [Initial generation evidence](evidence/initial-generation/)
 - [Final generation evidence](evidence/final-generation/)
+- [Recorded model and runtime settings](evidence/runtime-config.json)
+- [Recurrence and relative-time regression evidence](evidence/results/)
 
-The final human decision is pending. After reviewing the model results,
-unresolved failures and limitations, record ACCEPT or REJECT in your own
-words in `evidence/harness-log.md`. ACCEPT requires an automated PASS. The
-quickstart describes how to associate the decision with the final snapshot.
+The initial live run evaluates the original application with the repaired
+harness. The final run evaluates the revised application and prompt against
+the same cases. Both reports record an automated FAIL. Each archived run
+contains a report, a manifest, and a ZIP containing the evaluated candidate.
+
+Write your own observations and ACCEPT or REJECT decision in
+`evidence/harness-log.md` after reviewing the reports, repairs, remaining
+failures, and residual risks. ACCEPT requires an automated PASS. The
+quickstart shows how to save a separate decision record for the archived run.

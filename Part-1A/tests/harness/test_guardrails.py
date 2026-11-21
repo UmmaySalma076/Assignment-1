@@ -25,7 +25,10 @@ def workspace(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]
         "pyproject.toml": "[tool.pytest.ini_options]\ntestpaths = ['tests']\n",
         "specs/001-smart-todo/spec.md": "FR-001\nNFR-001\n",
         "specs/001-smart-todo/plan.md": "Python 3.13\n",
-        "specs/001-smart-todo/tasks.md": "- [x] T001 Example task\n",
+        "specs/001-smart-todo/tasks.md": (
+            "- [x] T001 Example task\n"
+            "- [ ] T051 Complete human review\n"
+        ),
         ".specify/memory/constitution.md": "Version 1.1.0\n",
         "app/main.py": "VALUE = 1\n",
         "tests/test_sample.py": "def test_sample():\n    assert True\n",
@@ -100,6 +103,77 @@ def test_text_protection_is_independent_of_checkout_line_endings(
     for line_ending in (b"\n", b"\r\n"):
         path.write_bytes(content.replace(b"\n", line_ending))
         assert HARNESS.guardrails()["passed"]
+
+
+def complete_review_task(workspace: dict[str, Any], status: str = "x") -> None:
+    path = workspace["root"] / "specs/001-smart-todo/tasks.md"
+    tasks = path.read_text(encoding="utf-8")
+    path.write_text(tasks.replace("[ ] T051", f"[{status}] T051"), encoding="utf-8")
+
+
+def test_completed_review_requires_a_record(workspace: dict[str, Any]) -> None:
+    complete_review_task(workspace)
+
+    assert any("human-review-v2.json" in problem for problem in problems(workspace))
+
+
+@pytest.mark.parametrize(("decision", "status"), [("ACCEPT", "x"), ("REJECT", "X")])
+def test_valid_review_can_be_locked_without_changing_the_task_digest(
+    workspace: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+    decision: str,
+    status: str,
+) -> None:
+    complete_review_task(workspace, status)
+    review = workspace["root"] / "evidence/results/human-review-v2.json"
+    review.write_text(
+        json.dumps({
+            "decision": decision,
+            "reviewer": "Test Fixture",
+            "decision_date": "2026-11-21",
+            "justification": "Fixture to verify review record validation.",
+            "evidence": ["evidence/results/historical.json"],
+        }),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(HARNESS.sys, "argv", ["run.py", "--lock"])
+
+    assert HARNESS.main() == 0
+    assert HARNESS.guardrails()["passed"]
+
+
+def test_lock_rejects_incomplete_review_data(
+    workspace: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    complete_review_task(workspace)
+    review = workspace["root"] / "evidence/results/human-review-v2.json"
+    review.write_text('{"decision": "ACCEPT"}', encoding="utf-8")
+    lock_before = HARNESS.LOCK.read_bytes()
+    monkeypatch.setattr(HARNESS.sys, "argv", ["run.py", "--lock"])
+
+    with pytest.raises(SystemExit, match="human-review-v2.json"):
+        HARNESS.main()
+    assert HARNESS.LOCK.read_bytes() == lock_before
+
+
+@pytest.mark.parametrize(
+    ("original", "changed"),
+    [
+        ("[x] T001", "[ ] T001"),
+        ("Complete human review", "Record a different task"),
+    ],
+)
+def test_task_edits_other_than_t051_status_fail_guardrails(
+    workspace: dict[str, Any], original: str, changed: str
+) -> None:
+    tasks = workspace["root"] / "specs/001-smart-todo/tasks.md"
+    content = tasks.read_text(encoding="utf-8")
+    tasks.write_text(content.replace(original, changed), encoding="utf-8")
+
+    assert any(
+        "protected files changed" in problem and "tasks.md" in problem
+        for problem in problems(workspace)
+    )
 
 
 @pytest.mark.parametrize(

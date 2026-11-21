@@ -1,0 +1,6 @@
+/evals/dataset.json text eol=lf
+/evaluation/rubrics/*.json text eol=lf
+/evaluation/rubrics/*.jsonl text eol=lf
+/src/reminder_agent/prompts/reminder_system.txt text eol=lf
+/evidence/**/*.json text eol=lf
+/evidence/**/*.zip binary

@@ -146,7 +146,7 @@ Supply the reviewed run ID, your name, your actual decision and your own rationa
 
 ```powershell
 python -m reminder_agent.evaluation.release_decision `
-  --snapshot-manifest "artifacts/snapshots/final/REPLACE_WITH_RUN_ID/manifest.json" `
+  --snapshot-manifest "evidence/final-generation/REPLACE_WITH_RUN_ID/manifest.json" `
   --reviewer "Reviewer Name" `
   --decision "ACCEPT_OR_REJECT" `
   --rationale "Your assessment of the evidence, limitations and residual risks." `
