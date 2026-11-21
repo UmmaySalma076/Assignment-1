@@ -2,7 +2,7 @@
 
 **Branch**: `001-reminder-agent` | **Date**: 2026-11-11 | **Spec**: [spec.md](./spec.md)
 
-**Input**: Approved feature specification and Constitution v1.1.0.
+**Input**: Feature specification and Constitution v1.1.0.
 
 ## Summary
 
@@ -10,7 +10,7 @@ Build a modular Python 3.13 FastAPI service that interprets reminder text with
 local TinyLlama through Ollama and returns a Pydantic v2-validated reminder,
 clarification, or refusal. Deterministic Python validation—not the model—owns
 schema enforcement, timezone/recurrence invariants, API error mapping, and
-evaluation scoring. One offline-capable evaluation entry point runs structural,
+evaluation scoring. One local evaluation entry point runs structural,
 invariant, property/metamorphic, and rubric-based semantic checks over the
 versioned dataset. No paid inference, persistent reminder storage, or
 notification delivery is included.
@@ -268,12 +268,14 @@ clarification (200).
 
 ## Evaluation Harness Architecture
 
-One command, planned as
-`python -m reminder_agent.evaluation.run --dataset evaluation/datasets/cases.jsonl --output artifacts/evaluations --clock 2026-03-01T12:00:00Z --timezone America/New_York --samples-per-case 3`,
+One command,
+`python .harness/run.py --dataset evals/dataset.json --output artifacts/evaluations --clock 2026-03-01T12:00:00Z --timezone America/New_York --samples-per-case 3`,
 owns the complete evaluation lifecycle. The samples-per-case argument defaults
 to three and MUST reject values below three. The harness preserves all 24
 specification scenarios: E22-E23 are service-error gates and do not enter the
 model-sample denominator, while the other 22 scenarios are scored model cases.
+The G06 conformance gate checks malformed JSON and configured request-length
+rejection before inference.
 The harness loads a versioned immutable dataset and records, for every sample,
 the pinned model tag, actual Ollama digest when available, and generation
 settings, as well as prompt version, evaluation-set version, one frozen UTC
@@ -439,12 +441,8 @@ passing until its report shows the measured result.
   mismatched configuration and do not substitute a newer tag silently.
 - **Timezone database drift**: pin the `tzdata` package and record its version
   so deterministic timezone results can be interpreted across later runs.
-- **Repository state after implementation**: the Python application,
-  dependency manifest, offline tests, dataset, evaluation harness, and
-  snapshot/report tooling are implemented. Dependency versions are pinned in
-  `pyproject.toml`; no lockfile is provided. Local Ollama/TinyLlama
-  availability and model evaluation remain unverified until an operator runs
-  the documented local workflow.
+- **Dependency versions**: `pyproject.toml` pins direct dependencies. Run
+  reports record installed versions used for model evaluation.
 
 See [research.md](./research.md) for technology-specific decisions and source
 references.
@@ -477,9 +475,11 @@ src/
     ├── prompts/             # Versioned system/output instructions
     ├── services/            # Orchestration and local Ollama adapter
     └── evaluation/          # Single harness, scorers, report/snapshot writers
+.harness/
+└── run.py                   # Entry point for the evaluation pipeline
+evals/
+└── dataset.json             # Versioned E01-E24 cases
 evaluation/
-├── datasets/
-│   └── cases.jsonl
 └── rubrics/
     ├── semantic-rubrics.json
     └── adjudications.jsonl  # Only pre-flagged genuinely ambiguous cases

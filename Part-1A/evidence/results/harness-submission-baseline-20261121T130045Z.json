@@ -1,0 +1,54 @@
+{
+  "label": "submission-baseline",
+  "captured_at": "20261121T130045Z",
+  "overall": "FAIL",
+  "gates": [
+    {
+      "gate": "syntax",
+      "passed": true,
+      "command": "-m compileall -q app tests",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "gate": "lint",
+      "passed": true,
+      "command": "-m ruff check . --config .harness/ruff.toml",
+      "exit_code": 0,
+      "stdout": "All checks passed!\n",
+      "stderr": ""
+    },
+    {
+      "gate": "security",
+      "passed": true,
+      "command": "-m bandit -r app -ll -q",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "gate": "tests+coverage",
+      "passed": true,
+      "command": "-m pytest -q --cov=app --cov-fail-under=85",
+      "exit_code": 0,
+      "stdout": "........................................................................ [ 90%]\n........                                                                 [100%]\n=============================== warnings summary ===============================\n../../../workspace/work/part1a-venv/lib/python3.13/site-packages/fastapi/testclient.py:1\n  /workspace/work/part1a-venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n================================ tests coverage ================================\n_______________ coverage: platform linux, python 3.13.5-final-0 ________________\n\nName                                  Stmts   Miss  Cover\n---------------------------------------------------------\napp/__init__.py                           0      0   100%\napp/api/__init__.py                       0      0   100%\napp/api/deps.py                           6      3    50%\napp/api/routes.py                        61     13    79%\napp/config.py                             6      0   100%\napp/database.py                          33      1    97%\napp/logging.py                           13      0   100%\napp/main.py                              22      0   100%\napp/models/__init__.py                    0      0   100%\napp/models/task.py                        8      8     0%\napp/repositories/__init__.py              0      0   100%\napp/repositories/task_repository.py      47      1    98%\napp/schemas/__init__.py                   0      0   100%\napp/schemas/task.py                      74     14    81%\napp/services/__init__.py                  0      0   100%\napp/services/task_service.py             46      2    96%\napp/utils/__init__.py                     0      0   100%\napp/utils/validation.py                  24      4    83%\n---------------------------------------------------------\nTOTAL                                   340     46    86%\nRequired test coverage of 85% reached. Total coverage: 86.47%\n80 passed, 1 warning in 1.14s\n",
+      "stderr": ""
+    },
+    {
+      "gate": "traceability",
+      "passed": true,
+      "expected": "every spec ID appears in tests (21 IDs)",
+      "observed": "all IDs referenced"
+    },
+    {
+      "gate": "guardrails",
+      "passed": false,
+      "expected": "no suppression/skip markers; unchanged tests/spec/config; unchanged recorded results; no tracked secrets/.env; required gate thresholds",
+      "observed": [
+        "unreviewed protected files added: ['evidence/final-generation/final-code-harness-v2-guardrails-20261110.provenance.json', 'evidence/final-generation/final-code-harness-v2-guardrails-20261110.zip', 'evidence/results/harness-guardrails-final-20261109T200226Z.json']",
+        "protected files changed: ['.harness/ruff.toml', '.harness/run.py', '.specify/memory/constitution.md', 'app/api/deps.py', 'app/api/routes.py', 'app/config.py', 'app/database.py', 'app/logging.py', 'app/main.py', 'app/models/task.py', 'app/repositories/task_repository.py', 'app/schemas/task.py', 'app/services/task_service.py', 'app/utils/validation.py', 'evidence/final-generation/final-code-harness-v2-20261109T0248-0530.provenance.json', 'evidence/final-generation/final-code-harness-v2-run11-20261109T1931Z.provenance.json', 'evidence/final-generation/final-code-harness-v2-run12-20261109T1940Z.provenance.json', 'evidence/initial-generation/initial-source/app/api/routes.py', 'evidence/initial-generation/initial-source/app/logging.py', 'evidence/initial-generation/initial-source/app/main.py', 'evidence/initial-generation/initial-source/app/repositories/task_repository.py', 'evidence/initial-generation/initial-source/app/schemas/task.py', 'evidence/initial-generation/initial-source/tests/contract/test_task_api_contract.py', 'evidence/initial-generation/initial-source/tests/integration/test_task_lifecycle.py', 'evidence/initial-generation/initial-source/tests/unit/test_task_validation.py', 'evidence/results/final-review-20261108T192703634738Z-report.json', 'evidence/results/final-review-20261108T192703634738Z.log', 'evidence/results/guardrail-tests-baseline-20261110.txt', 'evidence/results/guardrail-tests-rerun-20261110.txt', 'evidence/results/harness-run1-20261108T201551Z.json', 'evidence/results/harness-run10-final-20261109T192958Z.json', 'evidence/results/harness-run11-final-20261109T193118Z.json', 'evidence/results/harness-run12-final-20261109T194038Z.json', 'evidence/results/harness-run2-20261108T202045Z.json', 'evidence/results/harness-run3-20261108T202120Z.json', 'evidence/results/harness-run4-20261108T202129Z.json', 'evidence/results/harness-run5-20261108T202136Z.json', 'evidence/results/harness-run6-20261108T202146Z.json', 'evidence/results/harness-run7-20261108T202911Z.json', 'evidence/results/harness-run8-initial-20261108T212115Z.json', 'evidence/results/harness-run9-final-20261108T213725Z.json', 'evidence/results/human-review.json', 'evidence/results/post-repair-20261108T191918774468Z-report.json', 'evidence/results/post-repair-20261108T191918774468Z.log', 'evidence/results/put-patch-repair.json', 'evidence/results/repair-trace.json', 'evidence/results/ruff-archived-baseline-scan.json', 'evidence/results/sqlite-resource-repair.json', 'pyproject.toml', 'specs/001-smart-todo/spec.md', 'specs/001-smart-todo/tasks.md', 'tests/conftest.py', 'tests/contract/test_task_api_contract.py', 'tests/harness/test_guardrails.py', 'tests/integration/test_database_lifecycle.py', 'tests/integration/test_task_lifecycle.py', 'tests/unit/test_task_validation.py']"
+      ]
+    }
+  ]
+}

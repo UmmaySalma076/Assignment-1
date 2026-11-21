@@ -49,6 +49,7 @@ from reminder_agent.services.ollama import (
     ModelReply,
     OllamaClient,
     PROMPT_PATH,
+    PROMPT_VERSION,
 )
 
 DATASET_PATH = Path("evals/dataset.json")
@@ -479,7 +480,7 @@ def build_report(
         "created_at": datetime.now(timezone.utc).isoformat(),
         "dataset_version": cases[0]["dataset_version"],
         "dataset_sha256": dataset_hash,
-        "prompt_version": "1",
+        "prompt_version": PROMPT_VERSION,
         "prompt_sha256": digest_bytes(PROMPT_PATH.read_bytes()),
         "semantic_rubric_sha256": digest_bytes(
             (root / "evaluation" / "rubrics" / "semantic-rubrics.json").read_bytes()

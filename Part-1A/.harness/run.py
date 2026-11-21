@@ -1,7 +1,7 @@
 """Part 1A harness.
 
 Usage:
-    python .harness/run.py --label NAME
+    python .harness/run.py --label NAME [--output-dir PATH]
     python .harness/run.py --lock
 """
 from __future__ import annotations
@@ -24,7 +24,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 HARNESS = ROOT / ".harness"
-RESULTS = ROOT / "evidence" / "results"
+LOCAL_RESULTS = ROOT / "artifacts" / "harness"
 SPEC = ROOT / "specs" / "001-smart-todo" / "spec.md"
 TASKS = ROOT / "specs" / "001-smart-todo" / "tasks.md"
 PLAN = ROOT / "specs" / "001-smart-todo" / "plan.md"
@@ -58,6 +58,7 @@ GATE_COMMANDS = {
     ],
 }
 LOCK_SCHEMA_VERSION = 2
+PROTECTED_TEXT_SUFFIXES = {".json", ".log", ".md", ".py", ".toml", ".txt"}
 
 
 def sh(cmd: list[str]) -> dict[str, Any]:
@@ -151,6 +152,8 @@ def protected_paths() -> list[Path]:
 
 def protected_digest(path: Path) -> str:
     content = path.read_bytes()
+    if path.suffix in PROTECTED_TEXT_SUFFIXES:
+        content = content.replace(b"\r\n", b"\n")
     if path == TASKS:
         content = re.sub(rb"(?m)^(\s*-\s*)\[[ xX]\]", rb"\1[ ]", content)
     return hashlib.sha256(content).hexdigest()
@@ -404,6 +407,7 @@ def guardrails() -> dict[str, Any]:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--label")
+    ap.add_argument("--output-dir", type=Path, default=LOCAL_RESULTS)
     ap.add_argument("--lock", action="store_true")
     args = ap.parse_args()
     if args.lock:
@@ -445,8 +449,8 @@ def main() -> int:
         LOCK.write_text(json.dumps(actual, indent=2), encoding="utf-8")
         print("Locked protected source/spec baseline:", LOCK)
         return 0
-    if not args.label:
-        raise SystemExit("--label is required")
+    if not args.label or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,49}", args.label):
+        ap.error("--label must be 1–50 safe filename characters")
 
     py = sys.executable
     gates = []
@@ -457,19 +461,20 @@ def main() -> int:
     gates += [traceability(), guardrails()]
 
     overall = all(g["passed"] for g in gates)
-    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    RESULTS.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+    args.output_dir.mkdir(parents=True, exist_ok=True)
     report = {
         "label": args.label,
         "captured_at": stamp,
         "overall": "PASS" if overall else "FAIL",
         "gates": gates,
     }
-    out = RESULTS / f"harness-{args.label}-{stamp}.json"
-    out.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    out = args.output_dir / f"harness-{args.label}-{stamp}.json"
+    with out.open("x", encoding="utf-8") as report_file:
+        json.dump(report, report_file, indent=2)
     for g in gates:
         print(f"{'PASS' if g['passed'] else 'FAIL'}  {g['gate']}")
-    print(f"OVERALL: {report['overall']}  ->  {out.relative_to(ROOT)}")
+    print(f"OVERALL: {report['overall']}  ->  {out}")
     return 0 if overall else 1
 
 

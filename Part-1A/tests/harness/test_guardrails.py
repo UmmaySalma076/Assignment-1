@@ -91,6 +91,17 @@ def test_clean_workspace_passes_all_guardrail_checks(workspace: dict[str, Any]) 
     assert HARNESS.guardrails()["passed"]
 
 
+@pytest.mark.parametrize("relative_path", ["app/main.py", "evidence/results/historical.json"])
+def test_text_protection_is_independent_of_checkout_line_endings(
+    workspace: dict[str, Any], relative_path: str
+) -> None:
+    path = workspace["root"] / relative_path
+    content = path.read_bytes().replace(b"\r\n", b"\n")
+    for line_ending in (b"\n", b"\r\n"):
+        path.write_bytes(content.replace(b"\n", line_ending))
+        assert HARNESS.guardrails()["passed"]
+
+
 @pytest.mark.parametrize(
     ("relative_path", "content", "message"),
     [
