@@ -1,7 +1,7 @@
 """Part 1A harness.
 
 Usage:
-    python .harness/run.py --label NAME
+    python .harness/run.py --label NAME [--output-dir PATH]
     python .harness/run.py --lock
 """
 from __future__ import annotations
@@ -18,13 +18,13 @@ import sys
 import tokenize
 import tomllib
 import zipfile
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 HARNESS = ROOT / ".harness"
-RESULTS = ROOT / "evidence" / "results"
+LOCAL_RESULTS = ROOT / "artifacts" / "harness"
 SPEC = ROOT / "specs" / "001-smart-todo" / "spec.md"
 TASKS = ROOT / "specs" / "001-smart-todo" / "tasks.md"
 PLAN = ROOT / "specs" / "001-smart-todo" / "plan.md"
@@ -58,6 +58,9 @@ GATE_COMMANDS = {
     ],
 }
 LOCK_SCHEMA_VERSION = 2
+PROTECTED_TEXT_SUFFIXES = {".json", ".log", ".md", ".py", ".toml", ".txt"}
+REVIEW_TASK = re.compile(rb"(?m)^(- )\[([ xX])\]( T051\b)")
+REVIEW_RECORD = Path("evidence/results/human-review-v2.json")
 
 
 def sh(cmd: list[str]) -> dict[str, Any]:
@@ -151,8 +154,10 @@ def protected_paths() -> list[Path]:
 
 def protected_digest(path: Path) -> str:
     content = path.read_bytes()
+    if path.suffix in PROTECTED_TEXT_SUFFIXES:
+        content = content.replace(b"\r\n", b"\n")
     if path == TASKS:
-        content = re.sub(rb"(?m)^(\s*-\s*)\[[ xX]\]", rb"\1[ ]", content)
+        content = REVIEW_TASK.sub(rb"\1[ ]\3", content)
     return hashlib.sha256(content).hexdigest()
 
 
@@ -249,8 +254,46 @@ def lock_contents() -> dict[str, Any]:
     }
 
 
+def review_record_problems() -> list[str]:
+    task = REVIEW_TASK.search(TASKS.read_bytes())
+    path = ROOT / REVIEW_RECORD
+    if not path.exists() and (task is None or task[2] == b" "):
+        return []
+
+    try:
+        record = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return [f"{REVIEW_RECORD} must be a readable JSON object for a completed T051 review"]
+    if not isinstance(record, dict):
+        return [f"{REVIEW_RECORD} must contain a JSON object"]
+
+    invalid_fields = [
+        name
+        for name in ("reviewer", "justification")
+        if not isinstance(record.get(name), str) or not record[name].strip()
+    ]
+    if record.get("decision") not in ("ACCEPT", "REJECT"):
+        invalid_fields.append("decision")
+
+    decision_date = record.get("decision_date")
+    try:
+        if date.fromisoformat(decision_date).isoformat() != decision_date:
+            invalid_fields.append("decision_date")
+    except (TypeError, ValueError):
+        invalid_fields.append("decision_date")
+
+    evidence = record.get("evidence")
+    if not isinstance(evidence, list) or not evidence or any(
+        not isinstance(item, str) or not item.strip() for item in evidence
+    ):
+        invalid_fields.append("evidence")
+    if invalid_fields:
+        return [f"{REVIEW_RECORD} has missing or invalid fields: {', '.join(invalid_fields)}"]
+    return []
+
+
 def guardrails() -> dict[str, Any]:
-    problems = []
+    problems = review_record_problems()
     required_gates = {"syntax", "lint", "security", "tests+coverage"}
     if set(GATE_COMMANDS) != required_gates:
         problems.append(f"required gate commands must be exactly {sorted(required_gates)}")
@@ -395,7 +438,8 @@ def guardrails() -> dict[str, Any]:
     return gate("guardrails", not problems, {
         "expected": (
             "no suppression/skip markers; unchanged tests/spec/config; unchanged "
-            "recorded results; no tracked secrets/.env; required gate thresholds"
+            "recorded results; no tracked secrets/.env; required gate thresholds; "
+            "completed human review has a release decision record"
         ),
         "observed": problems or "ok",
     })
@@ -404,9 +448,13 @@ def guardrails() -> dict[str, Any]:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--label")
+    ap.add_argument("--output-dir", type=Path, default=LOCAL_RESULTS)
     ap.add_argument("--lock", action="store_true")
     args = ap.parse_args()
     if args.lock:
+        review_problems = review_record_problems()
+        if review_problems:
+            raise SystemExit("\n".join(review_problems))
         existing = json.loads(LOCK.read_text(encoding="utf-8")) if LOCK.exists() else {}
         actual = lock_contents()
         if existing and set(existing) == {"ruff.toml"}:
@@ -445,8 +493,8 @@ def main() -> int:
         LOCK.write_text(json.dumps(actual, indent=2), encoding="utf-8")
         print("Locked protected source/spec baseline:", LOCK)
         return 0
-    if not args.label:
-        raise SystemExit("--label is required")
+    if not args.label or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,49}", args.label):
+        ap.error("--label must be 1–50 safe filename characters")
 
     py = sys.executable
     gates = []
@@ -457,19 +505,20 @@ def main() -> int:
     gates += [traceability(), guardrails()]
 
     overall = all(g["passed"] for g in gates)
-    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    RESULTS.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+    args.output_dir.mkdir(parents=True, exist_ok=True)
     report = {
         "label": args.label,
         "captured_at": stamp,
         "overall": "PASS" if overall else "FAIL",
         "gates": gates,
     }
-    out = RESULTS / f"harness-{args.label}-{stamp}.json"
-    out.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    out = args.output_dir / f"harness-{args.label}-{stamp}.json"
+    with out.open("x", encoding="utf-8") as report_file:
+        json.dump(report, report_file, indent=2)
     for g in gates:
         print(f"{'PASS' if g['passed'] else 'FAIL'}  {g['gate']}")
-    print(f"OVERALL: {report['overall']}  ->  {out.relative_to(ROOT)}")
+    print(f"OVERALL: {report['overall']}  ->  {out}")
     return 0 if overall else 1
 
 

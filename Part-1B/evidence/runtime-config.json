@@ -1,0 +1,41 @@
+{
+  "original_source_git_revision": "c8a3149bc1edbaf9b2c76721cb08c4f615c85fa1",
+  "original_source_zip_sha256": "c5cf579133cf318dca6fe7d7ee644ca5c5b70f41c4cda06b1649f072ed87ae39",
+  "ollama_version": "0.40.17",
+  "inference_device": "CPU",
+  "ollama_num_parallel": 2,
+  "harness_jobs_per_run": 2,
+  "evaluation_read_timeout_seconds": 180,
+  "generation_settings": {
+    "temperature": 0.2,
+    "top_p": 0.9,
+    "num_thread": 2,
+    "num_ctx": 1024,
+    "num_predict": 256
+  },
+  "model_tag": "tinyllama:1.1b-chat-v0.6-q4_0",
+  "model_digest": "cb4df2e70049150001252b326acd64d3aab908b0a24251dd2dc8b403aa27127a",
+  "jobs_overlap": true,
+  "benchmark": {
+    "dataset_version": "1.0.0",
+    "samples_per_scored_case": 3,
+    "evaluation_clock": "2026-03-01T12:00:00Z",
+    "evaluation_timezone": "America/New_York"
+  },
+  "runs": {
+    "initial": {
+      "candidate_git_revision": "14bb4628ed1e00a8a9f628d22f14d403acd713d6",
+      "candidate_app_origin_revision": "c8a3149bc1edbaf9b2c76721cb08c4f615c85fa1",
+      "report": "initial-generation/20261121T133516Z-0528e7fb/report.json",
+      "report_sha256": "a70c4bff2b1977089aa4fd1398fc04f1a20e993ea77a710f2ba829aa45a811cb",
+      "candidate_zip_sha256": "9c845f62396e6d260462dcdf5696bb158bf6194bbc59b0fb2d373328f2f74392"
+    },
+    "final": {
+      "candidate_git_revision": "999a068168ad13ec517aef6b3c07a8f1503514c8",
+      "candidate_app_origin_revision": "999a068168ad13ec517aef6b3c07a8f1503514c8",
+      "report": "final-generation/20261121T133418Z-6ad7055e/report.json",
+      "report_sha256": "1296101d5ba226564cb01feecaff2d1b64df60a0077440a87d0fdba8c55a3f9d",
+      "candidate_zip_sha256": "5a428ab8646d069a8b8aadd40f73454f366a87012483baf931b9d2d058e791fd"
+    }
+  }
+}

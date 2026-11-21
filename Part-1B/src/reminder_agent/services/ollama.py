@@ -13,6 +13,7 @@ from reminder_agent.contracts.models import OUTCOME_ADAPTER
 from reminder_agent.api.errors import ServiceException
 
 PROMPT_PATH = Path(__file__).parents[1] / "prompts" / "reminder_system.txt"
+PROMPT_VERSION = "2"
 GENERATION_SETTINGS: dict[str, Any] = {
     "temperature": 0.2,
     "top_p": 0.9,

@@ -77,10 +77,10 @@ python -m bandit -r app
 - Equivalent inputs produce consistent API behavior under the same persisted state.
 - Tests that assert exact IDs or timestamps use controlled values; production IDs and timestamps remain runtime-generated.
 
-To run the full validation harness and preserve a JSON report, combined log, and code snapshot under `specs/001-smart-todo/evidence/`, run:
+From the Git checkout, run the full deterministic harness to write a timestamped JSON report under `artifacts/harness/`.
 
 ```powershell
-python scripts/run_harness.py --label final-validation
+python .harness/run.py --label local-verification
 ```
 
 Review the captured outputs and security scan before making the required human `ACCEPT` or `REJECT` decision. The harness does not approve the application automatically.

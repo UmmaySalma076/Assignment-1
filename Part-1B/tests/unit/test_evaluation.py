@@ -7,13 +7,16 @@ from pathlib import Path
 
 import pytest
 
+from reminder_agent.api.errors import ServiceException
 from reminder_agent.evaluation.reports import score_run
 from reminder_agent.evaluation.repair_evidence import load_repair_evidence
 from reminder_agent.evaluation.release_decision import record_release_decision
 from reminder_agent.evaluation.run import (
+    DATASET_PATH,
     load_dataset,
     evaluate_dataset,
     run_service_error_gates,
+    validate_dataset_context,
     validate_run_parameters,
 )
 from reminder_agent.evaluation.metamorphic import time_only_change
@@ -59,13 +62,15 @@ def test_clock_requires_offset_and_timezone_requires_iana():
 
 
 def test_dataset_retains_all_24_scenarios_with_two_service_gates():
-    cases, _digest = load_dataset(ROOT / "evaluation" / "datasets" / "cases.jsonl")
+    cases, _digest = load_dataset(ROOT / DATASET_PATH)
     assert len(cases) == 24
     assert {case["case_id"] for case in cases if case.get("gate")} == {"E22", "E23"}
     assert all(
         len(case["requirement_trace"]) > 0
         for case in cases
     )
+    with pytest.raises(ValueError, match="fixed context"):
+        validate_dataset_context(cases, datetime(2026, 3, 2, tzinfo=timezone.utc), "America/New_York")
 
 
 def test_service_error_gates_do_not_fabricate_outcomes():
@@ -73,11 +78,14 @@ def test_service_error_gates_do_not_fabricate_outcomes():
     assert results["E22"]["passed"]
     assert results["E23"]["passed"]
     assert not results["E22"]["fabricated_outcome"]
+    assert results["G06"]["passed"] and results["G06"]["model_calls"] == 0
 
 
 def test_time_only_relation_allows_only_declared_field_changes():
     before = {"intent": "create", "subject": "call", "due_at": "09:00", "timezone": "UTC"}
     after = {"intent": "create", "subject": "call", "due_at": "11:00", "timezone": "UTC"}
+    assert not time_only_change(before, before, ["due_at"])
+    assert not time_only_change(before, after, [])
     assert time_only_change(before, after, ["due_at"])
     after["subject"] = "send a message"
     assert not time_only_change(before, after, ["due_at"])
@@ -100,8 +108,8 @@ def test_report_counts_paired_samples_and_does_not_decide_release():
                 "paired_sample": {"passed": False, "critical_safety_failure": False},
             }],
         }],
-        service_gates={"E22": {"passed": True}, "E23": {"passed": True}},
-        cases=[{"dataset_version": "1.0.0"}],
+        service_gates={name: {"passed": True} for name in ("E22", "E23", "G06")},
+        cases=[{"case_id": "E15", "dataset_version": "1.0.0", "metamorphic_pair": {"relation": "equivalent"}}],
         dataset_hash="sha256",
         clock=datetime(2026, 3, 1, 12, tzinfo=timezone.utc),
         timezone_name="America/New_York",
@@ -113,6 +121,7 @@ def test_report_counts_paired_samples_and_does_not_decide_release():
     assert report["passing_samples"] == 1
     assert report["score_percent"] == 50
     assert report["threshold_percent"] == 90
+    assert report["evaluation_decision"] == "FAIL"
     assert report["evaluation_clock"] == "2026-03-01T12:00:00+00:00"
     assert report["evaluation_timezone"] == "America/New_York"
     assert report["final_human_decision"] is None
@@ -122,9 +131,15 @@ def test_harness_executes_both_metamorphic_generations_with_stubbed_model():
     class FakeOllama:
         def __init__(self, _settings):
             self.calls = 0
+            self.concurrent_calls = 0
+            self.max_concurrent_calls = 0
 
         async def generate(self, prompt):
             self.calls += 1
+            self.concurrent_calls += 1
+            self.max_concurrent_calls = max(self.max_concurrent_calls, self.concurrent_calls)
+            await asyncio.sleep(0)
+            self.concurrent_calls -= 1
             time_value = "11:30" if "11:30 AM" in prompt else "09:30"
             subject = "call my dentist" if "my dentist" in prompt else "call the dentist"
             content = json.dumps({
@@ -143,7 +158,7 @@ def test_harness_executes_both_metamorphic_generations_with_stubbed_model():
         async def close(self):
             return None
 
-    cases, _hash = load_dataset(ROOT / "evaluation" / "datasets" / "cases.jsonl")
+    cases, _hash = load_dataset(ROOT / DATASET_PATH)
     selected = [case for case in cases if case["case_id"] in {"E15", "E16"}]
     clock = datetime(2026, 3, 1, 12, tzinfo=timezone.utc)
     fake = FakeOllama(None)
@@ -155,14 +170,54 @@ def test_harness_executes_both_metamorphic_generations_with_stubbed_model():
             "America/New_York",
             ROOT,
             model_client_factory=lambda _settings: fake,
+            jobs=2,
         )
     )
     assert fake.calls == 4
+    assert fake.max_concurrent_calls == 2
+    assert [case["case_id"] for case in case_results] == ["E15", "E16"]
     assert all(result["samples"][0]["metamorphic_relation"]["passed"] for result in case_results)
     assert all(result["samples"][0]["passed"] for result in case_results)
     assert all(result["samples"][0]["paired_sample"]["passed"] for result in case_results)
     assert gates["E22"]["passed"] and gates["E23"]["passed"]
     assert properties["passed"]
+
+
+def test_capture_invalid_model_output_and_keep_backend_errors_separate_from_safety():
+    class FakeOllama:
+        async def generate(self, prompt):
+            if "hurt myself" in prompt:
+                raise ServiceException(503, "OLLAMA_UNAVAILABLE", "Unavailable")
+            if "attend an event" in prompt:
+                content = json.dumps({"outcome": "refusal", "category": "unsafe_action", "message": "No."})
+            else:
+                content = "not a JSON object"
+            return ModelReply(content, "tinyllama:1.1b-chat-v0.6-q4_0", None, {}, prompt)
+
+        async def close(self):
+            return None
+
+    cases, _ = load_dataset(ROOT / DATASET_PATH)
+    selected = [case for case in cases if case["case_id"] in {"E01", "E06", "E17"}]
+    results, _, _ = asyncio.run(
+        evaluate_dataset(
+            selected,
+            1,
+            datetime(2026, 3, 1, 12, tzinfo=timezone.utc),
+            "America/New_York",
+            ROOT,
+            model_client_factory=lambda _settings: FakeOllama(),
+        )
+    )
+    malformed, wrong_outcome, backend_error = (case["samples"][0] for case in results)
+    assert malformed["raw_output"] == "not a JSON object"
+    assert malformed["structural"]["evaluated"] and not malformed["structural"]["passed"]
+    assert wrong_outcome["structural"]["passed"] and not wrong_outcome["invariants"]["outcome_kind"]
+    assert backend_error["error"]["code"] == "OLLAMA_UNAVAILABLE"
+    assert backend_error["candidate_source"] == "shadow_model"
+    assert backend_error["application_output"]["outcome"] == "refusal"
+    assert not backend_error["structural"]["evaluated"]
+    assert not backend_error["critical_safety_failure"]
 
 
 def test_human_adjudication_is_preflagged_semantic_only_and_append_only():
@@ -224,6 +279,7 @@ def test_snapshot_is_immutable_and_records_hashes():
         manifest = json.loads((destination / "manifest.json").read_text(encoding="utf-8"))
         assert manifest["final_release_decision"] is None
         assert "report.json" in manifest["artifacts"]
+        assert "candidate/evals/dataset.json" in manifest["artifacts"]
         with pytest.raises(FileExistsError):
             create_snapshot(
                 ROOT, report, "initial", "unit-run", snapshot_root=work / "snapshots"
@@ -283,6 +339,10 @@ def test_human_release_decision_is_append_only_and_separate_from_snapshot():
             ROOT, report, "final", "final-run", snapshot_root=work / "snapshots"
         )
         manifest_path = snapshot / "manifest.json"
+        with pytest.raises(ValueError, match="passing final evaluation"):
+            record_release_decision(
+                manifest_path, "Reviewer", "ACCEPT", "Observed unresolved failures.", work / "decisions"
+            )
         decision_path = record_release_decision(
             manifest_path, "Reviewer", "REJECT", "Observed unresolved failures.", work / "decisions"
         )

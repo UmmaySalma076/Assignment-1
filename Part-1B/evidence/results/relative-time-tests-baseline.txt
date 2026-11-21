@@ -1,0 +1,31 @@
+.F.F.F                                                                   [100%]
+=================================== FAILURES ===================================
+_ test_relative_schedule_must_match_reference_clock[elapsed-across-dst-incorrect] _
+tests/integration/test_create_interpretation.py:101: in test_relative_schedule_must_match_reference_clock
+    assert response.status_code == (200 if correct_time else 502), response.text
+E   AssertionError: {"outcome":"reminder","actions":[{"intent":"create","subject":"check the calendar","due_at":"2026-03-08T03:30:00-04:00","timezone":"America/New_York","recurrence":null,"target_reference":null}]}
+E   assert 200 == 502
+E    +  where 200 = <Response [200 OK]>.status_code
+_ test_relative_schedule_must_match_reference_clock[calendar-month-incorrect] __
+tests/integration/test_create_interpretation.py:101: in test_relative_schedule_must_match_reference_clock
+    assert response.status_code == (200 if correct_time else 502), response.text
+E   AssertionError: {"outcome":"reminder","actions":[{"intent":"create","subject":"check the calendar","due_at":"2026-04-09T08:00:00-04:00","timezone":"America/New_York","recurrence":null,"target_reference":null}]}
+E   assert 200 == 502
+E    +  where 200 = <Response [200 OK]>.status_code
+_ test_relative_schedule_must_match_reference_clock[calendar-year-boundary-incorrect] _
+tests/integration/test_create_interpretation.py:101: in test_relative_schedule_must_match_reference_clock
+    assert response.status_code == (200 if correct_time else 502), response.text
+E   AssertionError: {"outcome":"reminder","actions":[{"intent":"create","subject":"check the calendar","due_at":"2026-12-08T09:00:00-05:00","timezone":"America/New_York","recurrence":null,"target_reference":null}]}
+E   assert 200 == 502
+E    +  where 200 = <Response [200 OK]>.status_code
+=============================== warnings summary ===============================
+../../part1b-venv/lib/python3.13/site-packages/starlette/testclient.py:40
+  /workspace/work/part1b-venv/lib/python3.13/site-packages/starlette/testclient.py:40: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = typing.Callable[[], typing.ContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/integration/test_create_interpretation.py::test_relative_schedule_must_match_reference_clock[elapsed-across-dst-incorrect]
+FAILED tests/integration/test_create_interpretation.py::test_relative_schedule_must_match_reference_clock[calendar-month-incorrect]
+FAILED tests/integration/test_create_interpretation.py::test_relative_schedule_must_match_reference_clock[calendar-year-boundary-incorrect]
+3 failed, 3 passed, 8 deselected, 1 warning in 1.23s

@@ -118,6 +118,28 @@ clarification or refusal response and absence of an actionable reminder.
 - Exact disallowed request categories are defined in FR-014 below; ambiguous
   high-consequence requests are clarified rather than treated as authorization.
 
+## Clarifications
+
+The following decisions summarize the requirements and technical plan for review.
+
+- Use the current UTC service clock for regular API requests. The harness
+  supplies a fixed reference instant and trusted timezone for the benchmark,
+  so the expected relative dates are reproducible. See FR-008–FR-010 and FR-019.
+- Ask for the missing detail when a timezone is unavailable or a local time
+  maps to zero or two valid instants. Ask for the reminder target when the
+  supplied references do not uniquely identify it. See FR-009 and FR-013.
+- A finite recurring schedule ends on an inclusive local date or after a
+  positive count that includes the first occurrence. An indefinite schedule
+  requires explicit user intent. See FR-011 and the recurrence section in
+  [research.md](research.md).
+- A valid clarification or refusal is a successful interpretation response.
+  Malformed model output, transport errors and invalid requests use the
+  stable error envelope from the [API contract](contracts/openapi.yaml).
+  See FR-004, FR-016 and FR-024.
+- Each live benchmark case has at least three independent samples. E22 and
+  E23 verify the service error path as separate gates. E15 and E16 add
+  paired generations for the declared metamorphic relations. See FR-017–FR-022.
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements

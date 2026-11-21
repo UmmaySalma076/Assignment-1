@@ -1,0 +1,47 @@
+{
+  "test": "E10_http_weekly_recurrence_contract",
+  "case_id": "E10",
+  "requirement": "FR-011",
+  "test_mode": "injected_model_fixture",
+  "expected": {
+    "status_code": 200,
+    "response": {
+      "outcome": "reminder",
+      "actions": [
+        {
+          "intent": "create",
+          "subject": "take medication",
+          "due_at": "2026-03-02T08:00:00-05:00",
+          "timezone": "America/New_York",
+          "target_reference": null,
+          "recurrence": {
+            "frequency": "weekly",
+            "interval": 1,
+            "weekdays": [
+              "MO",
+              "WE"
+            ],
+            "day_of_month": null,
+            "month": null,
+            "day": null,
+            "timezone": "America/New_York",
+            "end_condition": {
+              "until": "2026-12-31",
+              "occurrences": null
+            }
+          }
+        }
+      ]
+    }
+  },
+  "actual": {
+    "status_code": 502,
+    "response": {
+      "error": {
+        "code": "INVALID_MODEL_OUTPUT",
+        "message": "action date differs from an explicitly stated date"
+      }
+    }
+  },
+  "passed": false
+}

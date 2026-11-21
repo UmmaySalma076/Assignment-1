@@ -6,6 +6,7 @@ import json
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Protocol
+from zoneinfo import ZoneInfo
 
 from pydantic import ValidationError
 
@@ -15,6 +16,7 @@ from reminder_agent.contracts.models import (
     ClarificationResponse,
     InterpretRequest,
     ModelOutcome,
+    Recurrence,
     RefusalResponse,
     ReminderResponse,
 )
@@ -29,6 +31,7 @@ from reminder_agent.domain.targets import resolve_target
 from reminder_agent.domain.time import (
     TemporalValidationError,
     local_time_candidates,
+    resolve_relative_time,
     validate_zoned_datetime,
 )
 from reminder_agent.services.ollama import ModelReply
@@ -77,15 +80,30 @@ class Interpreter:
         request: InterpretRequest, clock: datetime, timezone_name: str | None
     ) -> str:
         context = [item.model_dump(mode="json") for item in request.reminder_context]
-        return (
-            f"Trusted reference clock: {clock.astimezone(timezone.utc).isoformat()}\n"
-            f"Trusted timezone: {timezone_name or 'not supplied'}\n"
-            f"Trusted reminder references: {json.dumps(context, ensure_ascii=False)}\n"
-            "<untrusted_request>\n"
-            f"{request.text}\n"
-            "</untrusted_request>\n"
-            "Return only the contract JSON object."
+        local_zone = ZoneInfo(timezone_name) if timezone_name else timezone.utc
+        fields = justified_fields(request)
+        prompt = [
+            f"Reference time (UTC): {clock.astimezone(timezone.utc).isoformat()}",
+            f"Trusted timezone: {timezone_name or 'not supplied'}",
+            f"Trusted reminder references: {json.dumps(context, ensure_ascii=False)}",
+        ]
+        if timezone_name:
+            prompt.append(f"Reference time (local): {clock.astimezone(local_zone).isoformat()}")
+        if fields:
+            prompt.append(f"Unresolved fields detected: {', '.join(sorted(fields))}")
+        if timezone_name:
+            try:
+                relative = resolve_relative_time(request.text, clock, timezone_name)
+                if isinstance(relative, datetime):
+                    prompt.append(f"Resolved elapsed time: {relative.astimezone(local_zone).isoformat()}")
+                elif relative is not None:
+                    prompt.append(f"Resolved calendar date: {relative.isoformat()}")
+            except TemporalValidationError:
+                prompt.append("The relative date is outside the supported calendar range.")
+        prompt.append(
+            "Request text (JSON string): " + json.dumps(request.text, ensure_ascii=False)
         )
+        return "\n".join(prompt)
 
     @staticmethod
     def _validate_outcome(
@@ -130,8 +148,21 @@ class Interpreter:
                 raise ValueError("duplicate reminder actions are not allowed")
             action_fingerprints.add(fingerprint)
             _validate_explicit_timezone(request.text, action.timezone, local)
-            _validate_explicit_slots(request.text, local)
+            _validate_explicit_slots(request.text, local, action.recurrence)
             _validate_dst_ambiguity(request.text, local, action.timezone)
+            if (
+                len(outcome.actions) == 1
+                and action.recurrence is None
+                and action.intent != "snooze"
+            ):
+                expected = resolve_relative_time(request.text, reference_time, action.timezone)
+                observed = (
+                    local.astimezone(timezone.utc)
+                    if isinstance(expected, datetime)
+                    else local.date()
+                )
+                if expected is not None and observed != expected:
+                    raise ValueError("action due time differs from the relative schedule")
 
             if action.intent == "create":
                 if action.target_reference is not None:
@@ -221,8 +252,20 @@ def _validate_subject_supported(subject: str, text: str) -> None:
         raise ValueError("action subject introduces details not present in the request")
 
 
-def _validate_explicit_slots(text: str, local: datetime) -> None:
+def _validate_explicit_slots(
+    text: str, local: datetime, recurrence: Recurrence | None
+) -> None:
     date_matches = list(re.finditer(r"\b\d{4}-\d{2}-\d{2}\b", text))
+    if recurrence is not None:
+        end_dates = {
+            match.start(1): match.group(1)
+            for match in re.finditer(r"\buntil\s+(\d{4}-\d{2}-\d{2})\b", text, re.I)
+        }
+        if end_dates:
+            until = recurrence.end_condition.until if recurrence.end_condition else None
+            if until is None or until.isoformat() not in end_dates.values():
+                raise ValueError("recurrence end date differs from an explicitly stated end date")
+            date_matches = [match for match in date_matches if match.start() not in end_dates]
     iso_dates = [match.group(0) for match in date_matches]
     if iso_dates and local.date().isoformat() not in iso_dates:
         raise ValueError("action date differs from an explicitly stated date")

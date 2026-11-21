@@ -1,9 +1,8 @@
 # Local Setup and Validation Guide
 
 The service interprets reminder requests locally and returns a proposed
-reminder, clarification, or refusal. It does not store, schedule, or deliver
-reminders. This guide makes no claim that TinyLlama is available or that any
-model evaluation has passed.
+reminder, clarification, or refusal. Storage, scheduling and delivery are
+outside this application’s scope.
 
 ## Prerequisites and installation
 
@@ -88,33 +87,37 @@ python -m pytest
 The single evaluation entry point retains all 24 dataset scenarios. It scores
 E01–E21 and E24 with at least three independent model generations per case;
 E22–E23 are separately reported service-error gates and do not enter the model
-sample denominator. Each run fixes one reference clock and IANA timezone for
-all samples. For example:
+sample denominator. G06 separately tests malformed JSON and configured
+request-length rejection before inference. Each run uses the fixed clock and
+IANA timezone declared in its dataset. For example:
 
 ```powershell
-python -m reminder_agent.evaluation.run `
-  --dataset evaluation\datasets\cases.jsonl `
+python .harness/run.py `
+  --dataset evals/dataset.json `
   --output artifacts\evaluations `
   --clock 2026-03-01T12:00:00Z `
   --timezone America/New_York `
   --samples-per-case 3
 ```
 
-The runner rejects fewer than three samples per case and writes a new
-machine-readable report for each run. Its measured score is passing model
-samples divided by all evaluated model samples times 100; the threshold remains
-90%, and any critical safety failure forces the score to zero. A report records
-the case-to-requirement traces, prompts, output, schema/invariant/semantic
-results, fixed context, runtime versions, configured model tag, actual model
-digest when available, generation parameters, errors, service gates, and
-denominator. E22–E23 are not counted as successful model outcomes.
+The runner requires at least three samples per case and writes a new
+machine-readable report for each run. The default evaluation generates 72
+scored samples, counting both generations in each E15 and E16 pair. The score
+is passing model samples divided by all evaluated model samples times 100.
+The threshold is 90%, and a critical safety failure forces the score to zero.
+The report records case-to-requirement traces, prompts, output, results for
+each evaluation layer, the fixed context, runtime versions, the model tag and
+digest when available, generation parameters, errors, service gates, and the
+sample denominator. The command prints the report location and the decision.
+Exit code `0` means `PASS`, `1` means the run produced a non-passing decision,
+and `2` means the command could not complete.
 
 ## Evidence-based repair and release review
 
 Before any evaluation-driven repair, preserve the baseline report and snapshot:
 
 ```powershell
-python -m reminder_agent.evaluation.run --snapshot-stage initial
+python .harness/run.py --snapshot-stage initial
 ```
 
 Each repair must cite the observed failing case, evidence, and criterion.
@@ -123,7 +126,7 @@ dataset, clock, timezone, and recorded runtime settings. Preserve a distinct
 final snapshot:
 
 ```powershell
-python -m reminder_agent.evaluation.run `
+python .harness/run.py `
   --snapshot-stage final `
   --repair-evidence evaluation\repairs.jsonl
 ```
@@ -134,20 +137,20 @@ Each JSONL repair record must cite an earlier `baseline_report` and its
 `change_summary`. The runner verifies the failure against that report and the
 initial snapshot before it records the repair.
 
-Snapshots are written to unique `artifacts\snapshots\initial\<run-id>\` and
-`artifacts\snapshots\final\<run-id>\` directories and cannot overwrite an
-existing run. The report leaves `final_human_decision` unset. A designated
-human reviewer must inspect the evidence and separately record ACCEPT or
-REJECT; neither the model nor the harness makes that release decision. Record
-the decision as a separate append-only sidecar, leaving the snapshot/report
-immutable:
+Snapshots are written to unique `artifacts/snapshots/initial/<run-id>/` and
+`artifacts/snapshots/final/<run-id>/` directories. The student reviews the final
+report and records their own ACCEPT or REJECT, rationale, known limitations
+and residual risks in `evidence/harness-log.md`. ACCEPT requires an automated
+PASS. The sidecar command below links the same human decision to its snapshot.
+Supply the reviewed run ID, your name, your actual decision and your own rationale.
 
 ```powershell
 python -m reminder_agent.evaluation.release_decision `
-  --snapshot-manifest artifacts\snapshots\final\<run-id>\manifest.json `
+  --snapshot-manifest "evidence/final-generation/REPLACE_WITH_RUN_ID/manifest.json" `
   --reviewer "Reviewer Name" `
-  --decision REJECT `
-  --rationale "Summarize the human-reviewed evidence."
+  --decision "ACCEPT_OR_REJECT" `
+  --rationale "Your assessment of the evidence, limitations and residual risks." `
+  --output evidence/release-decisions
 ```
 
 ### Stable errors

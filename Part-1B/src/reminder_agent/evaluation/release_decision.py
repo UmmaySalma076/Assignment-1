@@ -7,6 +7,8 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+from reminder_agent.evaluation.reports import digest_bytes
+
 
 def record_release_decision(
     snapshot_manifest: Path,
@@ -23,9 +25,16 @@ def record_release_decision(
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if manifest.get("stage") != "final":
         raise ValueError("release review must reference a final snapshot")
+    report_bytes = (manifest_path.parent / "report.json").read_bytes()
+    report_sha256 = digest_bytes(report_bytes)
+    if report_sha256 != manifest.get("artifacts", {}).get("report.json"):
+        raise ValueError("final report does not match the snapshot manifest")
+    if decision == "ACCEPT" and json.loads(report_bytes).get("evaluation_decision") != "PASS":
+        raise ValueError("ACCEPT requires a passing final evaluation")
     record = {
         "snapshot_run_id": manifest["run_id"],
         "snapshot_manifest": str(manifest_path),
+        "report_sha256": report_sha256,
         "reviewer": reviewer.strip(),
         "decision": decision,
         "rationale": rationale.strip(),

@@ -1,0 +1,31 @@
+F.FF                                                                     [100%]
+=================================== FAILURES ===================================
+_ test_weekly_recurrence_distinguishes_start_and_end_dates[-2026-03-02-2026-04-13-200] _
+tests/integration/test_create_interpretation.py:164: in test_weekly_recurrence_distinguishes_start_and_end_dates
+    assert response.status_code == expected_status, response.text
+E   AssertionError: {"error":{"code":"INVALID_MODEL_OUTPUT","message":"action date differs from an explicitly stated date"}}
+E   assert 502 == 200
+E    +  where 502 = <Response [502 Bad Gateway]>.status_code
+_ test_weekly_recurrence_distinguishes_start_and_end_dates[ starting 2026-03-02-2026-03-02-2026-04-20-502] _
+tests/integration/test_create_interpretation.py:164: in test_weekly_recurrence_distinguishes_start_and_end_dates
+    assert response.status_code == expected_status, response.text
+E   AssertionError: {"outcome":"reminder","actions":[{"intent":"create","subject":"review the schedule","due_at":"2026-03-02T08:00:00Z","timezone":"UTC","recurrence":{"frequency":"weekly","interval":1,"weekdays":["MO"],"day_of_month":null,"month":null,"day":null,"timezone":"UTC","end_condition":{"until":"2026-04-20","occurrences":null}},"target_reference":null}]}
+E   assert 200 == 502
+E    +  where 200 = <Response [200 OK]>.status_code
+_ test_weekly_recurrence_distinguishes_start_and_end_dates[ starting 2026-03-02-2026-04-13-2026-04-13-502] _
+tests/integration/test_create_interpretation.py:164: in test_weekly_recurrence_distinguishes_start_and_end_dates
+    assert response.status_code == expected_status, response.text
+E   AssertionError: {"outcome":"reminder","actions":[{"intent":"create","subject":"review the schedule","due_at":"2026-04-13T08:00:00Z","timezone":"UTC","recurrence":{"frequency":"weekly","interval":1,"weekdays":["MO"],"day_of_month":null,"month":null,"day":null,"timezone":"UTC","end_condition":{"until":"2026-04-13","occurrences":null}},"target_reference":null}]}
+E   assert 200 == 502
+E    +  where 200 = <Response [200 OK]>.status_code
+=============================== warnings summary ===============================
+../../part1b-venv/lib/python3.13/site-packages/starlette/testclient.py:40
+  /workspace/work/part1b-venv/lib/python3.13/site-packages/starlette/testclient.py:40: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = typing.Callable[[], typing.ContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/integration/test_create_interpretation.py::test_weekly_recurrence_distinguishes_start_and_end_dates[-2026-03-02-2026-04-13-200]
+FAILED tests/integration/test_create_interpretation.py::test_weekly_recurrence_distinguishes_start_and_end_dates[ starting 2026-03-02-2026-03-02-2026-04-20-502]
+FAILED tests/integration/test_create_interpretation.py::test_weekly_recurrence_distinguishes_start_and_end_dates[ starting 2026-03-02-2026-04-13-2026-04-13-502]
+3 failed, 1 passed, 10 deselected, 1 warning in 2.04s
