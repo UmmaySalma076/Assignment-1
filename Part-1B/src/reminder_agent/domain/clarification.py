@@ -119,8 +119,11 @@ def justified_fields(request: InterpretRequest) -> set[str]:
     return fields
 
 
-def validate_clarification(request: InterpretRequest, unresolved_fields: list[str]) -> None:
-    justified = justified_fields(request)
+def validate_clarification(
+    request: InterpretRequest, unresolved_fields: list[str], *, justified: set[str] | None = None
+) -> None:
+    if justified is None:
+        justified = justified_fields(request)
     if not justified:
         raise ValueError("clarification is not justified by request or context")
     if any(not any(_field_matches(candidate, known) for known in justified) for candidate in unresolved_fields):

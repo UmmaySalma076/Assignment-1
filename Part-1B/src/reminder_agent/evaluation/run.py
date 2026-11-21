@@ -8,7 +8,7 @@ import json
 from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Awaitable, Callable
 from zoneinfo import ZoneInfo
 
 from fastapi.testclient import TestClient
@@ -17,6 +17,7 @@ from reminder_agent.api.app import create_app
 from reminder_agent.api.errors import ServiceException
 from reminder_agent.config import PINNED_MODEL, Settings
 from reminder_agent.contracts.models import (
+    OUTCOME_ADAPTER,
     InterpretRequest,
     RefusalResponse,
     ReminderResponse,
@@ -61,9 +62,28 @@ class RecordingModel:
     def __init__(self, client: OllamaClient):
         self.client = client
         self.last_reply: ModelReply | None = None
+        self.last_prompt: str | None = None
+        self.last_output_schema: dict[str, Any] | None = None
 
     async def generate(self, prompt: str) -> ModelReply:
+        self.last_prompt = prompt
+        if callable(getattr(self.client, "generate_structured", None)):
+            self.last_output_schema = OUTCOME_ADAPTER.json_schema()
         self.last_reply = await self.client.generate(prompt)
+        return self.last_reply
+
+    @property
+    def generate_structured(
+        self,
+    ) -> Callable[[str, dict[str, Any]], Awaitable[ModelReply]] | None:
+        if callable(getattr(self.client, "generate_structured", None)):
+            return self._generate_structured
+        return None
+
+    async def _generate_structured(self, prompt: str, output_schema: dict[str, Any]) -> ModelReply:
+        self.last_prompt = prompt
+        self.last_output_schema = output_schema
+        self.last_reply = await self.client.generate_structured(prompt, output_schema)
         return self.last_reply
 
 
@@ -339,11 +359,10 @@ async def _evaluate_one(
     adjudications: list[dict[str, Any]],
 ) -> dict[str, Any]:
     recording.last_reply = None
+    recording.last_prompt = None
+    recording.last_output_schema = None
     application_error: dict[str, str] | None = None
     application_outcome = None
-    attempted_prompt = interpreter._build_prompt(
-        request, clock, request.timezone
-    )
     try:
         application_outcome = await interpreter.interpret(
             request, clock=clock, timezone_name=request.timezone
@@ -353,18 +372,7 @@ async def _evaluate_one(
     except Exception as exc:
         application_error = {"code": "INTERNAL_ERROR", "message": str(exc)}
 
-    guarded = isinstance(application_outcome, RefusalResponse) and recording.last_reply is None
     error = application_error
-    if case.get("critical_safety") and guarded:
-        # The application blocks these requests before inference. Independently
-        # sample the model without routing its output to the application.
-        try:
-            await recording.generate(attempted_prompt)
-        except ServiceException as exc:
-            error = {"code": exc.code, "message": exc.message}
-        except Exception as exc:
-            error = {"code": "INTERNAL_ERROR", "message": str(exc)}
-
     reply = recording.last_reply
     raw_output = reply.content if reply is not None else None
     valid, outcome, parse_error = (
@@ -396,12 +404,15 @@ async def _evaluate_one(
         and all(invariants.values())
         and all(semantics.values())
     )
+    outcome_constraint = (recording.last_output_schema or {}).get("properties", {}).get("outcome", {})
+    guarded = outcome_constraint.get("const") == "refusal" or outcome_constraint.get("enum") == ["refusal"]
     return {
-        "prompt": reply.prompt if reply else attempted_prompt,
+        "prompt": reply.prompt if reply else recording.last_prompt,
+        "output_schema": recording.last_output_schema,
         "model_tag": reply.model_tag if reply else PINNED_MODEL,
         "model_digest": reply.model_digest if reply else None,
         "generation_settings": reply.generation_settings if reply else dict(GENERATION_SETTINGS),
-        "candidate_source": "shadow_model" if case.get("critical_safety") and guarded else "application_model",
+        "candidate_source": "guarded_refusal_model" if guarded else "application_model",
         "raw_output": raw_output,
         "parsed_output": outcome.model_dump(mode="json") if outcome else None,
         "application_output": application_outcome.model_dump(mode="json") if application_outcome else None,

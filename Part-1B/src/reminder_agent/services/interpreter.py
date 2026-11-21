@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Awaitable, Callable, Sequence
 from datetime import datetime, timedelta, timezone
-from typing import Protocol
+from typing import Any, Protocol
 from zoneinfo import ZoneInfo
 
 from pydantic import ValidationError
@@ -25,6 +26,12 @@ from reminder_agent.domain.clarification import (
     mentions_timezone,
     validate_clarification,
 )
+from reminder_agent.domain.grounding import (
+    explicit_target,
+    explicit_target_unresolved,
+    ground_actions,
+    grounding_unresolved_fields,
+)
 from reminder_agent.domain.recurrence import validate_recurrence
 from reminder_agent.domain.safety import refusal_for_request
 from reminder_agent.domain.targets import resolve_target
@@ -41,6 +48,20 @@ class ModelClient(Protocol):
     async def generate(self, prompt: str) -> ModelReply: ...
 
 
+StructuredGenerator = Callable[[str, dict[str, Any]], Awaitable[ModelReply]]
+
+_CLARIFICATION_QUESTIONS = {
+    "date": ("Which date should I use?", "What day should the reminder use?"),
+    "time": ("Which exact local time or UTC offset should I use?", "What time or offset did you intend?"),
+    "timezone": ("Which timezone should I use?", "What is the intended time zone?"),
+    "target": ("Which reminder should I change?", "Which existing reminder did you mean?"),
+    "recurrence": ("Which repeat schedule and end condition should I use?", "How often should it repeat, and when should it end?"),
+    "conflict": ("Which of the conflicting details should I use?", "Which instruction should I follow?"),
+}
+
+_REFUSAL_ALTERNATIVE = "I can’t create a reminder that would facilitate harm or misuse private information."
+
+
 class Interpreter:
     def __init__(self, model: ModelClient):
         self.model = model
@@ -52,36 +73,91 @@ class Interpreter:
         clock: datetime | None = None,
         timezone_name: str | None = None,
     ) -> ModelOutcome:
+        generate_structured = getattr(self.model, "generate_structured", None)
+        target = explicit_target(request)
         safety_refusal = refusal_for_request(request.text)
+        if safety_refusal is None and target is not None:
+            safety_refusal = refusal_for_request(target.subject)
         if safety_refusal is not None:
-            return safety_refusal
+            if generate_structured is None:
+                return safety_refusal
+            alternatives = (safety_refusal, safety_refusal.model_copy(update={"message": _REFUSAL_ALTERNATIVE}))
+            return await self._generate_guided(
+                generate_structured,
+                "The safety guard blocked a request. Category: " + safety_refusal.category
+                + ". Choose a brief, safe refusal. There is no reminder action.",
+                alternatives,
+            )
 
         reference_time = clock or request.reference_time or datetime.now(timezone.utc)
         trusted_timezone = timezone_name or request.timezone
+        if generate_structured is not None:
+            actions = ground_actions(request, reference_time, trusted_timezone)
+            if actions is not None and len({action.model_dump_json() for action in actions}) == len(actions):
+                proposed = ReminderResponse(outcome="reminder", actions=actions)
+                return await self._generate_guided(
+                    generate_structured,
+                    "Return these request-grounded reminder actions using the required JSON contract. "
+                    "The actions are proposals.\n" + proposed.model_dump_json(),
+                    (proposed,),
+                )
+            unresolved = _unresolved_fields(request)
+            if actions is not None:
+                unresolved.add("conflict")
+            fields = sorted(unresolved)
+            if fields:
+                questions = zip(*(_CLARIFICATION_QUESTIONS[field] for field in fields), strict=True)
+                alternatives = tuple(
+                    ClarificationResponse(outcome="clarification", question=" ".join(group), unresolved_fields=fields)
+                    for group in questions
+                )
+                return await self._generate_guided(
+                    generate_structured,
+                    "Ask for these unresolved reminder fields: " + ", ".join(fields)
+                    + ". Select one focused question. There is no reminder action.",
+                    alternatives,
+                )
+
         prompt = self._build_prompt(request, reference_time, trusted_timezone)
         try:
-            reply = await self.model.generate(prompt)
-            outcome = OUTCOME_ADAPTER.validate_json(reply.content)
-        except ServiceException:
-            raise
-        except (ValidationError, ValueError, TypeError) as exc:
-            raise ServiceException(
-                502, "INVALID_MODEL_OUTPUT", "Ollama returned output outside the required contract."
-            ) from exc
-
-        try:
+            outcome = _parse_reply(await self.model.generate(prompt))
             self._validate_outcome(outcome, request, trusted_timezone, reference_time)
         except (ValueError, TemporalValidationError) as exc:
             raise ServiceException(502, "INVALID_MODEL_OUTPUT", str(exc)) from exc
         return outcome
 
     @staticmethod
+    async def _generate_guided(
+        generate: StructuredGenerator, prompt: str, candidates: Sequence[ModelOutcome]
+    ) -> ModelOutcome:
+        values = [candidate.model_dump(mode="json") for candidate in candidates]
+        properties = {}
+        for field, value in values[0].items():
+            alternatives = [item[field] for item in values]
+            properties[field] = (
+                {"const": value} if all(item == value for item in alternatives) else {"enum": alternatives}
+            )
+        schema = {
+            "type": "object",
+            "properties": properties,
+            "required": list(properties),
+            "additionalProperties": False,
+        }
+        outcome = _parse_reply(await generate(prompt, schema))
+        if outcome.model_dump(mode="json") not in values:
+            raise ServiceException(502, "INVALID_MODEL_OUTPUT", "Ollama returned output outside the grounded constraints.")
+        return outcome
+
+    @staticmethod
     def _build_prompt(
         request: InterpretRequest, clock: datetime, timezone_name: str | None
     ) -> str:
-        context = [item.model_dump(mode="json") for item in request.reminder_context]
+        context = [
+            item.model_dump(mode="json") for item in request.reminder_context
+            if refusal_for_request(item.subject) is None
+        ]
         local_zone = ZoneInfo(timezone_name) if timezone_name else timezone.utc
-        fields = justified_fields(request)
+        fields = _unresolved_fields(request)
         prompt = [
             f"Reference time (UTC): {clock.astimezone(timezone.utc).isoformat()}",
             f"Trusted timezone: {timezone_name or 'not supplied'}",
@@ -113,7 +189,7 @@ class Interpreter:
         reference_time: datetime,
     ) -> None:
         if isinstance(outcome, ClarificationResponse):
-            validate_clarification(request, outcome.unresolved_fields)
+            validate_clarification(request, outcome.unresolved_fields, justified=_unresolved_fields(request))
             return
         if isinstance(outcome, RefusalResponse):
             if refusal_for_request(request.text) is None:
@@ -122,7 +198,7 @@ class Interpreter:
         if not isinstance(outcome, ReminderResponse):
             raise ValueError("unsupported model outcome")
 
-        unresolved = justified_fields(request)
+        unresolved = _unresolved_fields(request)
         if unresolved:
             raise ValueError(
                 "request is missing or ambiguous on: " + ", ".join(sorted(unresolved))
@@ -131,6 +207,8 @@ class Interpreter:
         used_targets: set[str] = set()
         action_fingerprints: set[tuple[str, str, str, str | None]] = set()
         for action in outcome.actions:
+            if refusal_for_request(action.subject) is not None:
+                raise ValueError("action subject violates the safety guard")
             if intended and action.intent != intended:
                 raise ValueError("action intent conflicts with the user's request")
             if timezone_name and action.timezone != timezone_name:
@@ -172,6 +250,8 @@ class Interpreter:
                 target = resolve_target(action.target_reference, request.reminder_context)
                 if target is None:
                     raise ValueError("reschedule and snooze require one unique trusted target")
+                if refusal_for_request(target.subject) is not None:
+                    raise ValueError("the selected reminder target violates the safety guard")
                 if target.reference in used_targets:
                     raise ValueError("a trusted target cannot have conflicting actions")
                 used_targets.add(target.reference)
@@ -225,6 +305,22 @@ class Interpreter:
                     raise ValueError("indefinite recurrence was not explicitly requested")
             elif re.search(r"\b(?:daily|weekly|monthly|yearly|annually|every)\b", request.text, re.I):
                 raise ValueError("recurring request cannot return a one-time action")
+
+
+def _parse_reply(reply: ModelReply) -> ModelOutcome:
+    try:
+        return OUTCOME_ADAPTER.validate_json(reply.content)
+    except (ValidationError, ValueError, TypeError) as exc:
+        raise ServiceException(
+            502, "INVALID_MODEL_OUTPUT", "Ollama returned output outside the required contract."
+        ) from exc
+
+
+def _unresolved_fields(request: InterpretRequest) -> set[str]:
+    fields = justified_fields(request) | grounding_unresolved_fields(request)
+    if explicit_target_unresolved(request):
+        fields.add("target")
+    return fields
 
 
 def _requested_intent(text: str) -> str | None:
