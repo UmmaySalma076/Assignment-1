@@ -6,14 +6,11 @@ import hashlib
 import json
 import platform
 import subprocess
-import sys
 from datetime import datetime, timezone
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
-
-from reminder_agent import __version__
 
 THRESHOLD_PERCENT = 90.0
 MIN_SAMPLES_PER_CASE = 3
@@ -54,6 +51,18 @@ def git_revision(root: Path) -> str | None:
         ).strip()
     except (OSError, subprocess.CalledProcessError):
         return None
+
+
+def git_dirty(root: Path) -> bool | None:
+    try:
+        changes = subprocess.check_output(
+            ["git", "-C", str(root), "status", "--porcelain", "--", "."],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return bool(changes.strip())
 
 
 def write_report(output_dir: Path, report: dict[str, Any]) -> Path:

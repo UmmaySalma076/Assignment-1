@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import Any
 
@@ -11,13 +12,22 @@ from reminder_agent.contracts.models import (
     ReminderResponse,
 )
 
+CLARIFICATION_TERMS = {
+    "date": r"date|day|when|friday",
+    "time": r"time|hour|offset|occurrence|first|second|DST|UTC|standard time|daylight",
+    "recurrence": r"recurrence|schedule|frequency|repeat|weekday|day|end|until|often",
+    "conflict": r"date|day|time|which|conflict",
+    "target": r"which|reminder|appointment|target",
+    "timezone": r"timezone|time zone|location|zone",
+}
+
 
 def score_semantics(outcome: Any, case: dict[str, Any]) -> dict[str, bool]:
     if outcome is None:
         return {criterion: False for criterion in case.get("semantic_criteria", [])}
     expected = case["expected_outcome"]
     actual = outcome.outcome
-    result: dict[str, bool] = {}
+    result = dict.fromkeys(case.get("semantic_criteria", []), False)
     if "intent_outcome" in case.get("semantic_criteria", []):
         result["intent_outcome"] = actual == expected
         if expected == "reminder" and isinstance(outcome, ReminderResponse):
@@ -28,10 +38,14 @@ def score_semantics(outcome: Any, case: dict[str, Any]) -> dict[str, bool]:
     if "temporal_correctness" in case.get("semantic_criteria", []):
         result["temporal_correctness"] = _actions_match(outcome, case, details=False)
     if "clarification" in case.get("semantic_criteria", []):
-        fields = set(getattr(outcome, "unresolved_fields", []))
+        expected_fields = set(case.get("expected_unresolved_fields", []))
         result["clarification"] = (
             isinstance(outcome, ClarificationResponse)
-            and set(case.get("expected_unresolved_fields", [])).issubset(fields)
+            and expected_fields == {field.casefold() for field in outcome.unresolved_fields}
+            and all(
+                re.search(rf"\b(?:{CLARIFICATION_TERMS.get(field, re.escape(field))})\b", outcome.question, re.I)
+                for field in expected_fields
+            )
         )
     if "refusal_safety" in case.get("semantic_criteria", []):
         result["refusal_safety"] = (

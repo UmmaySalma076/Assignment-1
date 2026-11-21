@@ -11,11 +11,11 @@ from typing import Literal
 
 SnapshotStage = Literal["initial", "final"]
 PRESERVED_PATHS = (
+    ".harness",
     ".gitignore",
     "pyproject.toml",
     "src",
     "tests",
-    "evaluation/datasets",
     "evaluation/rubrics",
     "specs/001-reminder-agent",
 )
@@ -27,6 +27,8 @@ def create_snapshot(
     stage: SnapshotStage,
     run_id: str,
     snapshot_root: Path | None = None,
+    *,
+    dataset_path: Path | None = None,
 ) -> Path:
     destination = (snapshot_root or root / "artifacts" / "snapshots") / stage / run_id
     destination.mkdir(parents=True, exist_ok=False)
@@ -36,7 +38,7 @@ def create_snapshot(
         if source.is_dir():
             target = destination / "candidate" / relative
             target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copytree(source, target)
+            shutil.copytree(source, target, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
             copied.extend(
                 str(path.relative_to(destination))
                 for path in target.rglob("*")
@@ -47,6 +49,10 @@ def create_snapshot(
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, target)
             copied.append(str(target.relative_to(destination)))
+    dataset_target = destination / "candidate" / "evals" / "dataset.json"
+    dataset_target.parent.mkdir(parents=True)
+    shutil.copy2(dataset_path or root / "evals" / "dataset.json", dataset_target)
+    copied.append(str(dataset_target.relative_to(destination)))
     report_target = destination / "report.json"
     shutil.copy2(report_path, report_target)
     copied.append("report.json")

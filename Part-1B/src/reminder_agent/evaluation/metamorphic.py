@@ -30,8 +30,5 @@ def compare_equivalent(left: Any, right: Any) -> bool:
 def time_only_change(
     before: dict[str, Any], after: dict[str, Any], allowed_fields: list[str]
 ) -> bool:
-    ignored = set(allowed_fields)
-    return all(
-        key == "due_at" or key in ignored or before.get(key) == after.get(key)
-        for key in before.keys() | after.keys()
-    )
+    changed = {key for key in before.keys() | after.keys() if before.get(key) != after.get(key)}
+    return "due_at" in changed and changed.issubset(allowed_fields)
