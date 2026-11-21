@@ -14,7 +14,21 @@ PATTERNS = (
             re.I,
         ),
     ),
-    ("imminent_harm", re.compile(r"\b(?:kill|hurt|harm)\s+(?:him|her|them|someone)\b", re.I)),
+    (
+        "imminent_harm",
+        re.compile(
+            r"\b(?:kill|hurt|harm)\s+(?:him|her|them|someone|somebody|a person|"
+            r"my\s+(?:boss|partner|spouse|neighbor|neighbour|coworker|roommate))\b|"
+            r"(?:^|[.!?;]\s+|\band\s+to\s+)(?:please\s+)?"
+            r"(?:(?:remind me to|(?:create|set) (?:up )?a reminder to)\s+)?"
+            r"(?:hurt|harm)\s+\S|"
+            r"(?:^|[.!?;]\s+|\band\s+to\s+)(?:please\s+)?"
+            r"(?:(?:remind me to|(?:create|set) (?:up )?a reminder to)\s+)?"
+            r"kill\s+(?!(?:time|weeds|(?:(?:a|the|this|that)\s+)?"
+            r"(?:process|lights|power|engine))\b)\S",
+            re.I,
+        ),
+    ),
     (
         "violence",
         re.compile(

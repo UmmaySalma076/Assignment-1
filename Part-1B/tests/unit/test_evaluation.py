@@ -185,14 +185,18 @@ def test_harness_executes_both_metamorphic_generations_with_stubbed_model():
 
 def test_capture_invalid_model_output_and_keep_backend_errors_separate_from_safety():
     class FakeOllama:
-        async def generate(self, prompt):
-            if "hurt myself" in prompt:
+        async def generate_structured(self, prompt, output_schema):
+            outcome = output_schema["properties"]["outcome"]["const"]
+            if outcome == "refusal":
+                assert "hurt myself" not in prompt
                 raise ServiceException(503, "OLLAMA_UNAVAILABLE", "Unavailable")
-            if "attend an event" in prompt:
+            if outcome == "clarification":
                 content = json.dumps({"outcome": "refusal", "category": "unsafe_action", "message": "No."})
-            else:
-                content = "not a JSON object"
-            return ModelReply(content, "tinyllama:1.1b-chat-v0.6-q4_0", None, {}, prompt)
+                return ModelReply(content, "tinyllama:1.1b-chat-v0.6-q4_0", None, {}, prompt)
+            return await self.generate(prompt)
+
+        async def generate(self, prompt):
+            return ModelReply("not a JSON object", "tinyllama:1.1b-chat-v0.6-q4_0", None, {}, prompt)
 
         async def close(self):
             return None
@@ -214,10 +218,57 @@ def test_capture_invalid_model_output_and_keep_backend_errors_separate_from_safe
     assert malformed["structural"]["evaluated"] and not malformed["structural"]["passed"]
     assert wrong_outcome["structural"]["passed"] and not wrong_outcome["invariants"]["outcome_kind"]
     assert backend_error["error"]["code"] == "OLLAMA_UNAVAILABLE"
-    assert backend_error["candidate_source"] == "shadow_model"
-    assert backend_error["application_output"]["outcome"] == "refusal"
+    assert backend_error["candidate_source"] == "guarded_refusal_model"
+    assert backend_error["application_output"] is None
+    assert backend_error["output_schema"] is not None
+    assert "hurt myself" not in backend_error["prompt"]
     assert not backend_error["structural"]["evaluated"]
     assert not backend_error["critical_safety_failure"]
+
+
+def test_guarded_adapter_uses_three_samples_and_reports_any_raw_action():
+    class FakeOllama:
+        def __init__(self):
+            self.calls = 0
+
+        async def generate_structured(self, prompt, output_schema):
+            self.calls += 1
+            assert "publish their private address" not in prompt
+            fields = output_schema["properties"]
+            assert "actions" not in fields
+            message = fields["message"].get("const") or fields["message"]["enum"][0]
+            response = {"outcome": "refusal", "category": "violence", "message": message}
+            if self.calls == 2:
+                response["actions"] = [{"subject": "stub action to check schema enforcement"}]
+            return ModelReply(json.dumps(response), "tinyllama:1.1b-chat-v0.6-q4_0", None, {}, prompt)
+
+        async def generate(self, _prompt):
+            pytest.fail("guarded requests must use refusal-only structured generation")
+
+        async def close(self):
+            return None
+
+    cases, _ = load_dataset(ROOT / DATASET_PATH)
+    model = FakeOllama()
+    results, _, _ = asyncio.run(
+        evaluate_dataset(
+            [case for case in cases if case["case_id"] == "E18"],
+            3,
+            datetime(2026, 3, 1, 12, tzinfo=timezone.utc),
+            "America/New_York",
+            ROOT,
+            model_client_factory=lambda _settings: model,
+        )
+    )
+    samples = results[0]["samples"]
+    assert model.calls == results[0]["generation_count"] == 3
+    assert [sample["passed"] for sample in samples] == [True, False, True]
+    assert [sample["critical_safety_failure"] for sample in samples] == [False, True, False]
+    assert all(sample["candidate_source"] == "guarded_refusal_model" for sample in samples)
+    assert samples[0]["application_output"]["outcome"] == "refusal"
+    assert samples[1]["application_output"] is None
+    assert samples[1]["application_error"]["code"] == "INVALID_MODEL_OUTPUT"
+    assert json.loads(samples[1]["raw_output"])["actions"]
 
 
 def test_human_adjudication_is_preflagged_semantic_only_and_append_only():

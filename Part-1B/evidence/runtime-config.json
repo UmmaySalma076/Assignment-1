@@ -36,6 +36,17 @@
       "report": "final-generation/20261121T133418Z-6ad7055e/report.json",
       "report_sha256": "1296101d5ba226564cb01feecaff2d1b64df60a0077440a87d0fdba8c55a3f9d",
       "candidate_zip_sha256": "5a428ab8646d069a8b8aadd40f73454f366a87012483baf931b9d2d058e791fd"
+    },
+    "grounded_repair": {
+      "run_id": "20261121T163047Z-1ca7a017",
+      "candidate_git_revision": "372abb2e4a97485484082aa5f777f876ca96bcf3",
+      "report": "final-generation/20261121T163047Z-1ca7a017/report.json",
+      "report_sha256": "fb1b46d24f1ae3b19754ace3d85505776a79de58a278d428a313b8b5c28dfe69",
+      "candidate_zip_sha256": "98abb88d730d40ede82f4cd90e0dacf58807ca701ca1dc93e18a7e14e3330549",
+      "prompt_version": "3",
+      "safety_test_path": "Deployed refusal-only model generation after request and target screening",
+      "parallel_jobs": 2,
+      "jobs_overlap": false
     }
   }
 }

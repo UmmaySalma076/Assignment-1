@@ -13,7 +13,7 @@ from reminder_agent.contracts.models import OUTCOME_ADAPTER
 from reminder_agent.api.errors import ServiceException
 
 PROMPT_PATH = Path(__file__).parents[1] / "prompts" / "reminder_system.txt"
-PROMPT_VERSION = "2"
+PROMPT_VERSION = "3"
 GENERATION_SETTINGS: dict[str, Any] = {
     "temperature": 0.2,
     "top_p": 0.9,
@@ -64,6 +64,9 @@ class OllamaClient:
             raise ServiceException(503, "OLLAMA_UNAVAILABLE", "Local Ollama is unavailable.") from exc
 
     async def generate(self, prompt: str) -> ModelReply:
+        return await self.generate_structured(prompt, OUTCOME_ADAPTER.json_schema())
+
+    async def generate_structured(self, prompt: str, output_schema: dict[str, Any]) -> ModelReply:
         if self.settings.model != PINNED_MODEL:
             raise ServiceException(503, "OLLAMA_UNAVAILABLE", "Pinned local model is not configured.")
         system = PROMPT_PATH.read_text(encoding="utf-8")
@@ -73,7 +76,7 @@ class OllamaClient:
                 json={
                     "model": PINNED_MODEL,
                     "stream": False,
-                    "format": OUTCOME_ADAPTER.json_schema(),
+                    "format": output_schema,
                     "options": GENERATION_SETTINGS,
                     "messages": [
                         {"role": "system", "content": system},
@@ -94,7 +97,7 @@ class OllamaClient:
         except (httpx.HTTPError, ValueError) as exc:
             raise ServiceException(502, "INVALID_MODEL_OUTPUT", "Ollama returned an invalid response.") from exc
 
-        message = payload.get("message")
+        message = payload.get("message") if isinstance(payload, dict) else None
         content = message.get("content") if isinstance(message, dict) else None
         if not isinstance(content, str) or not content.strip():
             raise ServiceException(502, "INVALID_MODEL_OUTPUT", "Ollama returned empty model output.")

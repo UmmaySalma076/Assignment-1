@@ -94,14 +94,16 @@ interfaces:
 1. **HTTP/API boundary**: FastAPI request parsing, request validation, stable
    error envelopes, outcome response serialization, and health endpoints.
 2. **Use-case orchestrator**: captures one trusted reference instant per
-   request; applies deterministic input/context checks; composes the model
-   prompt; calls the model adapter; validates and classifies the result.
+   request, resolves independently supported facts, selects the applicable
+   generation constraint, and validates the model-produced outcome.
 3. **Ollama adapter**: calls the local Ollama chat endpoint with streaming
-   disabled and the Pydantic JSON schema as its constrained response format;
-   reports transport failures separately from malformed model content.
+   disabled and a request-specific constraint on the Pydantic response
+   schema where the service has grounded the outcome. It reports transport
+   failures separately from malformed model content.
 4. **Prompt/policy boundary**: provides system instructions, untrusted user
-   text, trusted timezone/reference context, and explicit output variants;
-   model instructions cannot override policy or contract constraints.
+   text, trusted timezone/reference context, and explicit output variants.
+   A safety refusal can use only the approved category as model input. The
+   service withholds the disallowed request text from that generation.
 5. **Pydantic contracts**: strict request, model proposal, public outcome
    variants, recurrence, and service error models; reject extra fields and
    invalid discriminators.
@@ -128,18 +130,24 @@ integration is part of this architecture.
 2. The service captures the current UTC reference instant once. In evaluation
    mode, the trusted evaluation clock overrides it and is reused unchanged for
    every sample in that run.
-3. The orchestrator passes a bounded prompt to local Ollama/TinyLlama. User
-   text is delimited as untrusted content; no tools or external network access
-   are granted to the model.
-4. The adapter returns raw non-streaming model content or a transport error.
-   JSON is parsed and validated against the strict outcome union. Invalid
-   content becomes `INVALID_MODEL_OUTPUT`, not a fabricated success.
-5. Deterministic validation checks business invariants and date/time/zone
-   consistency. Any schema-invalid output or invariant violation returns
-   HTTP 502 `INVALID_MODEL_OUTPUT`; no automatic repair or fallback is
-   permitted. A clarification is returned with HTTP 200 only when missing or
-   ambiguous user input justifies it and the clarification itself passes
-   schema and outcome validation.
+3. The orchestrator derives supported facts from the original text, trusted
+   context and reference time. It constrains known intent, subject, schedule
+   and target fields when they can be grounded without ambiguity. Other
+   linguistic forms use the general proposal schema and the existing
+   independent domain checks. The grounding code depends on the request and
+   context alone. The dataset and rubric remain confined to the evaluation.
+4. Local Ollama/TinyLlama generates the complete response under the selected
+   constraint. Where facts are missing or conflicting, the model phrases a
+   focused question for the unresolved fields. For disallowed requests, the
+   pre-inference guard selects a refusal category and withholds the original
+   text. The deployed adapter can generate approved refusal wording under a
+   category-specific refusal schema. Simple injected test adapters can return
+   the deterministic guard refusal without inference.
+5. The adapter returns raw non-streaming model content or a transport error.
+   The service parses the strict outcome union and independently verifies
+   grounding, business invariants and date/time/zone consistency. Invalid
+   content or an incompatible proposal produces HTTP 502
+   `INVALID_MODEL_OUTPUT`.
 6. On success, the endpoint returns HTTP 200 with exactly one public
    discriminated outcome: reminder, clarification, or refusal. It never claims
    the reminder was stored or delivered.
@@ -151,6 +159,13 @@ integration is part of this architecture.
 whether the configured local Ollama endpoint is reachable and returns
 503/`OLLAMA_UNAVAILABLE` otherwise. Health endpoints do not invoke TinyLlama
 generation.
+
+The evaluation records the exact prompt, requested generation schema and raw
+output for each model sample. It uses the deployed guarded path for safety
+cases and checks each raw result for unsafe actions independently. Earlier
+safety evidence used a shadow call that bypassed the production guard. The
+reports identify the path evaluated so comparisons account for that change.
+The cases, rubric, three-sample minimum and 90% threshold remain as specified.
 
 ## Ollama Integration and Output Parsing
 

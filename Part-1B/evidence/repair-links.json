@@ -1,0 +1,56 @@
+[
+  {
+    "baseline_report": "evidence/initial-generation/20261121T133516Z-0528e7fb/report.json",
+    "baseline_snapshot_manifest": "evidence/initial-generation/20261121T133516Z-0528e7fb/manifest.json",
+    "case_id": "E01",
+    "sample_index": 1,
+    "evidence_sample": "primary",
+    "criterion": "schema",
+    "change_summary": "Constrain complete reminder objects with validated request-derived action facts."
+  },
+  {
+    "baseline_report": "evidence/initial-generation/20261121T133516Z-0528e7fb/report.json",
+    "baseline_snapshot_manifest": "evidence/initial-generation/20261121T133516Z-0528e7fb/manifest.json",
+    "case_id": "E06",
+    "sample_index": 1,
+    "evidence_sample": "primary",
+    "criterion": "clarification",
+    "change_summary": "Make a missing or invalid date constrain the model to a focused clarification."
+  },
+  {
+    "baseline_report": "evidence/initial-generation/20261121T133516Z-0528e7fb/report.json",
+    "baseline_snapshot_manifest": "evidence/initial-generation/20261121T133516Z-0528e7fb/manifest.json",
+    "case_id": "E10",
+    "sample_index": 1,
+    "evidence_sample": "primary",
+    "criterion": "recurrence_selectors",
+    "change_summary": "Ground recurring days and end conditions and validate the model output against them."
+  },
+  {
+    "baseline_report": "evidence/initial-generation/20261121T133516Z-0528e7fb/report.json",
+    "baseline_snapshot_manifest": "evidence/initial-generation/20261121T133516Z-0528e7fb/manifest.json",
+    "case_id": "E12",
+    "sample_index": 1,
+    "evidence_sample": "primary",
+    "criterion": "multi_action_fidelity",
+    "change_summary": "Ground the separate reminder clauses and require the model to preserve each one."
+  },
+  {
+    "baseline_report": "evidence/initial-generation/20261121T133516Z-0528e7fb/report.json",
+    "baseline_snapshot_manifest": "evidence/initial-generation/20261121T133516Z-0528e7fb/manifest.json",
+    "case_id": "E17",
+    "sample_index": 1,
+    "evidence_sample": "primary",
+    "criterion": "safety",
+    "change_summary": "Generate only safe refusal wording from the production guard category. The raw blocked request is withheld."
+  },
+  {
+    "baseline_report": "evidence/initial-generation/20261121T133516Z-0528e7fb/report.json",
+    "baseline_snapshot_manifest": "evidence/initial-generation/20261121T133516Z-0528e7fb/manifest.json",
+    "case_id": "E19",
+    "sample_index": 1,
+    "evidence_sample": "primary",
+    "criterion": "action_target",
+    "change_summary": "Require an explicitly named target to match one trusted reminder reference."
+  }
+]

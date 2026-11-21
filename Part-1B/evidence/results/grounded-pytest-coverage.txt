@@ -1,0 +1,46 @@
+........................................................................ [ 64%]
+.......................................                                  [100%]
+=============================== warnings summary ===============================
+../../part1b-venv/lib/python3.13/site-packages/starlette/testclient.py:40
+  /workspace/work/part1b-venv/lib/python3.13/site-packages/starlette/testclient.py:40: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = typing.Callable[[], typing.ContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.13.5-final-0 ________________
+
+Name                                                Stmts   Miss  Cover
+-----------------------------------------------------------------------
+src/reminder_agent/__init__.py                          1      0   100%
+src/reminder_agent/api/__init__.py                      0      0   100%
+src/reminder_agent/api/app.py                          62      9    85%
+src/reminder_agent/api/errors.py                       20      0   100%
+src/reminder_agent/config.py                           57      8    86%
+src/reminder_agent/contracts/__init__.py                0      0   100%
+src/reminder_agent/contracts/models.py                169     16    91%
+src/reminder_agent/domain/__init__.py                   0      0   100%
+src/reminder_agent/domain/clarification.py             82     10    88%
+src/reminder_agent/domain/grounding.py                242     23    90%
+src/reminder_agent/domain/recurrence.py                44      7    84%
+src/reminder_agent/domain/safety.py                     9      0   100%
+src/reminder_agent/domain/targets.py                   10      3    70%
+src/reminder_agent/domain/time.py                      58     10    83%
+src/reminder_agent/evaluation/__init__.py               0      0   100%
+src/reminder_agent/evaluation/adjudications.py         61     13    79%
+src/reminder_agent/evaluation/invariants.py            71     24    66%
+src/reminder_agent/evaluation/metamorphic.py           12      1    92%
+src/reminder_agent/evaluation/properties.py            31      3    90%
+src/reminder_agent/evaluation/release_decision.py      45     19    58%
+src/reminder_agent/evaluation/repair_evidence.py       55     13    76%
+src/reminder_agent/evaluation/reports.py               46     14    70%
+src/reminder_agent/evaluation/run.py                  258     50    81%
+src/reminder_agent/evaluation/semantic.py              63     16    75%
+src/reminder_agent/evaluation/snapshots.py             35      0   100%
+src/reminder_agent/evaluation/structural.py            10      0   100%
+src/reminder_agent/prompts/__init__.py                  0      0   100%
+src/reminder_agent/services/__init__.py                 0      0   100%
+src/reminder_agent/services/interpreter.py            248     36    85%
+src/reminder_agent/services/ollama.py                  74     18    76%
+-----------------------------------------------------------------------
+TOTAL                                                1763    293    83%
+111 passed, 1 warning in 5.63s
