@@ -101,6 +101,20 @@ description: "Implementation tasks for the Natural-Language Reminder Agent"
 
 **Checkpoint**: All user stories and evaluation infrastructure are implemented; this is not evidence that tests or model evaluation have passed.
 
+## Phase 7: Request Grounding and Guarded Generation
+
+- [ ] T035 Implement FR-025 request-derived constraints for grounded
+  structured details, focused clarifications and guarded refusals. Preserve
+  the validated general-proposal path for other linguistic forms and require
+  independent response and invariant validation on every generation path.
+- [ ] T036 Record the exact model prompt, requested schema and raw result for
+  the deployed generation path. Preserve the existing benchmark, eligibility
+  checks, sample minimum, thresholds and independent critical safety checks.
+- [ ] T037 Add supplemental API regressions for grounded responses, unrelated
+  model actions, ambiguous requests and invalid model output. Verify the
+  guarded production refusal sends only its category and constrains the
+  generated wording. Rerun the full harness and preserve the run evidence.
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

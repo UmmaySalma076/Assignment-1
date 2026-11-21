@@ -255,6 +255,19 @@ The following decisions summarize the requirements and technical plan for review
   text exceeds the configured maximum MUST be rejected without truncation or
   model submission and MUST return HTTP 400 with the stable error code
   `INVALID_REQUEST` in the documented service-error envelope.
+- **FR-025**: Where structured reminder details can be established from the
+  request and trusted context, the service MUST independently ground those
+  details and constrain the local model's structured proposal to them. The
+  service MUST validate the complete model-produced object and its grounding
+  before returning a public outcome. Other linguistic forms MAY use the
+  general proposal path with the same independent validation. In eligible
+  requests, unresolved details MUST prevent reminder actions and allow only a
+  focused clarification.
+  For disallowed requests, the service MUST block the raw text before
+  inference. It MAY ask the local model to phrase an approved refusal using
+  only the grounded category under a refusal-only constraint. Malformed or
+  incompatible model responses MUST produce `INVALID_MODEL_OUTPUT`. The
+  same public response and error contracts apply to all paths.
 
 ### Required Structured Output Contracts
 
@@ -381,6 +394,7 @@ The complete functional-requirement traceability is:
 | FR-022 | E15-E16, G04 |
 | FR-023 | G05 |
 | FR-024 | G06 |
+| FR-025 | Supplemental API contract regressions for request grounding, clarification, refusal and invalid output |
 
 ## Key Entities *(include if feature involves data)*
 
