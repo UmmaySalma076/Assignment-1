@@ -163,7 +163,7 @@ Run10 used the global Python installation, where pytest-cov was unavailable. `py
 
 **Reviewer** Ummay Salma
 
-**Review date** 2026-21-11
+**Review date** 2026-11-21
 
 **Justification** 
 `Baseline finding` — The fresh-checkout harness failed its evidence integrity check. The same text could hash differently when checked out with Windows CRLF or Linux LF line endings. Baseline report `/evidence/results/harness-submission-baseline-20261121T130045Z.json`
