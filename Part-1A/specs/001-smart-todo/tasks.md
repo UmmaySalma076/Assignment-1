@@ -196,7 +196,7 @@
 - [x] T048 Re-run the exact same `.harness/run.py` harness and gates used in T045, without weakening or changing them, and save the complete repaired-run report, commands, outputs, and results under repository-root `evidence/results/`. (Depends on T047)
 - [x] T049 Preserve the final validated source snapshot in repository-root `evidence/final-generation/`, with a provenance manifest linking it to the passing T048 report. (Depends on T048)
 - [x] T050 Write `specs/001-smart-todo/evidence/harness-log.md` (done by the student), recording the ordered T044-T049 execution, exact evidence paths, test-first failures, evidence-based repairs, final harness results, and snapshot provenance. Do not invent results or record the human decision here. (Depends on T049)
-- [ ] T051 After T044-T050 are complete, obtain and record a human ACCEPT or REJECT decision and the human's justification in repository-root `evidence/results/human-review-v2.json` (do not overwrite the earlier review). The decision must review the initial and final harness reports, test reports, security scan, failure/repair evidence, final snapshot, and harness log. The AI MUST NOT make or imply this decision. (Depends on T050; final gate)
+- [x] T051 After T044-T050 are complete, obtain and record a human ACCEPT or REJECT decision and the human's justification in repository-root `evidence/results/human-review-v2.json` (do not overwrite the earlier review). The decision must review the initial and final harness reports, test reports, security scan, failure/repair evidence, final snapshot, and harness log. The AI MUST NOT make or imply this decision. (Depends on T050; final gate)
 
 ### Acceptance Criterion to Test Task Mapping
 

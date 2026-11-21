@@ -1,7 +1,7 @@
 # Harness Log: Part 1A (Smart Todo API)
 
 **Updated:** 2026-11-10
-**Harness V2 human decision:** Pending; no new ACCEPT/REJECT decision is recorded here.
+**Harness V2 human decision:** ACCEPT
 
 ## 1. Context
 
@@ -18,7 +18,7 @@ The Git history identifies the related Copilot session as `545198b7-512e-4fee-85
 
 The initial source snapshot is `evidence/initial-generation/initial-code-state.zip`; the unpacked initial source is in `evidence/initial-generation/initial-source/`.
 
-The latest final source snapshot is `evidence/final-generation/final-code-harness-v2-guardrails-20261110.zip`. Its SHA-256 and the linked run13 report hash are recorded in `evidence/final-generation/final-code-harness-v2-guardrails-20261110.provenance.json`. The archive contains 34 source and Spec Kit files with per-file SHA-256 values in the provenance manifest. Earlier snapshots and their provenance remain preserved.
+The run13 source snapshot is `evidence/final-generation/final-code-harness-v2-guardrails-20261110.zip`. Its SHA-256 and the linked run13 report hash are recorded in `evidence/final-generation/final-code-harness-v2-guardrails-20261110.provenance.json`. The archive contains 34 source and Spec Kit files with per-file SHA-256 values in the provenance manifest. Earlier snapshots and their provenance remain preserved.
 
 ## 3. Harness V2
 
@@ -152,15 +152,35 @@ Run10 used the global Python installation, where pytest-cov was unavailable. `py
 - Bandit passing at `-ll` means no MEDIUM/HIGH findings were reported by that scan; it is not a comprehensive security certification.
 - Run10 used a Python environment without pytest-cov and failed the coverage invocation. The dependency is now declared for development installs; run12 passed using the project virtual environment.
 - The run2 result file currently contains PowerShell notes rather than JSON. The valid historical report is preserved in the Git object at commit `ed3bf59`; the current file was not overwritten.
-- The existing `evidence/results/human-review.json` records an earlier ACCEPT dated 2026-11-09 based on a 28-test validation. It predates Harness V2 and is not its approval. The Harness V2 review record has intentionally not been created because T051 remains pending.
-- Run13 is the latest full harness evidence: all six gates passed, with 80 tests, 86.47% coverage, and 21 traceable FR/NFR identifiers. Its snapshot and per-file provenance are `evidence/final-generation/final-code-harness-v2-guardrails-20261110.zip` and `evidence/final-generation/final-code-harness-v2-guardrails-20261110.provenance.json`.
+- The existing `evidence/results/human-review.json` records an earlier ACCEPT dated 2026-11-09 based on a 28-test validation. It predates Harness V2 and is not its approval. T051 tracks the separate Harness V2 decision in `evidence/results/human-review-v2.json`.
+- The archived run13 report records six passing gates, 80 tests, 86.47% coverage, and 21 traceable FR/NFR identifiers. Its snapshot and per-file provenance are `evidence/final-generation/final-code-harness-v2-guardrails-20261110.zip` and `evidence/final-generation/final-code-harness-v2-guardrails-20261110.provenance.json`.
 
 ## 8. Final human decision
 
 **Earlier decision:** ACCEPT, recorded in `evidence/results/human-review.json` for the earlier validation only.
-**Harness V2 decision:** PENDING — no ACCEPT or REJECT decision has been made or recorded here.
-**Date:** Not yet provided.
-**Justification:** To be supplied by the human reviewer after reviewing the run13 report, failure and repair evidence, final snapshot, and this log.
+
+**Harness V2 decision** ACCEPT, recorded in `evidence/results/human-review-v2.json`
+
+**Reviewer** Ummay Salma
+
+**Review date** 2026-21-11
+
+**Justification** 
+`Baseline finding` — The fresh-checkout harness failed its evidence integrity check. The same text could hash differently when checked out with Windows CRLF or Linux LF line endings. Baseline report `/evidence/results/harness-submission-baseline-20261121T130045Z.json`
+`Repair reviewed` — The guardrail now normalizes line endings before hashing protected text files. Binary snapshots still use byte-for-byte verification. Repair tests `/evidence/results/checkout-portability-test-first.txt`
+`Rerun and decision` — The final run passed all six gates, with 88 tests, 86.47% coverage against the 85% minimum, and all 21 requirements traced. Passing report `/evidence/results/harness-human-review-workflow-final-20261121T132013020709Z.json`
+
+**Known limitations** One concrete limitation is the 1,000-task performance check. It measures response time with a local SQLite database. Sustained traffic and multiple users making requests at the same time are outside that check’s coverage.
+
+**Evidence to review**
+
+- [Initial generated code snapshot](../../../evidence/initial-generation/initial-code-state.zip)
+- [Fresh-checkout baseline report](../../../evidence/results/harness-submission-baseline-20261121T130045Z.json)
+- [Checkout portability repair tests](../../../evidence/results/checkout-portability-test-first.txt)
+- [Human review workflow regression tests](../../../evidence/results/human-review-workflow-test-first.txt)
+- [Latest passing harness report](../../../evidence/results/harness-human-review-workflow-final-20261121T132013020709Z.json)
+- [Latest source snapshot and provenance](../../../evidence/final-generation/human-review-workflow.provenance.json)
+- [Latest source snapshot ZIP](../../../evidence/final-generation/human-review-workflow.zip)
 
 ## 9. Final verification (2026-11-10)
 
